@@ -1,0 +1,5 @@
+{
+    "name": "less",
+    "main": "index.ts",
+    "private": true
+}
