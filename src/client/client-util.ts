@@ -1,5 +1,5 @@
-import type { Desc, ParamIn, ParamType, Params, ResponseType } from "src/packages/less";
-import { LessQueryConfig } from "./react/use-less-query";
+import { Desc, ParamIn, ParamType, LessResponseType } from "../types";
+import { LessQueryConfig } from "./react/useLessQuery";
 
 export function requiresFormDataBody(desc: Desc<any>): boolean {
     return Object.values(desc).some(v => typeof v === "object" && ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body");
@@ -107,7 +107,7 @@ function jsonReviver(key: string, value: any) {
     } else return value;
 }
 
-export async function getResponseValue(res: Response, type: ResponseType) {
+export async function getResponseValue(res: Response, type: LessResponseType) {
     if (!res.ok) return undefined;
 
     switch (type) {

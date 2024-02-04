@@ -45,7 +45,7 @@ export type QueryCacheTagsFilter = (string | string[])[];
  *
  * Funktionalität ähnlich wie `SWR`-Caching
  */
-export class QueryCache {
+export default class QueryCache {
     #cache: Map<string, QueryState> = new Map();
     #listeners: Map<string, Set<QueryCacheStateListener>> = new Map();
 

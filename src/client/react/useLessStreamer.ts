@@ -1,13 +1,13 @@
-import type { Desc, Params, ResponseValue } from "src/packages/less";
-import LessFetchError from "./less-fetch-error";
+import LessFetchError from "./LessFetchError";
 import React from "react";
-import useLessQuery, { RefetchResult, UseFetchOptions, getQueryKey } from "./use-less-query";
-import { Falsy } from "src/packages/util/src/utility-types";
-import { useLessCognitoContext } from "./less-cognito-context";
-import { useLessCache } from "./less-cache";
-import { QueryCache, QueryCacheStateListener } from "@less/client/react/query-cache";
+import useLessQuery, { RefetchResult, UseFetchOptions, getQueryKey } from "./useLessQuery";
+import { useLessCognitoContext } from "./LessCognitoProvider";
+import { useLessCache } from "./LessCacheProvider";
+import { LessResponseValue, Desc, Params } from "../../types";
+import QueryCache, { QueryCacheStateListener } from "./QueryCache";
+import { Falsy } from "u/src/utility-types";
 
-export type LessStreamer<D extends { $response: any[] } = any, R = ResponseValue<D>> = {
+export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseValue<D>> = {
     isError: boolean;
     error: LessFetchError | null;
     isLoading: boolean;
@@ -17,7 +17,7 @@ export type LessStreamer<D extends { $response: any[] } = any, R = ResponseValue
     page: R | undefined | null;
     size: number;
     /** Setzt die größe des Steramers (Wie viel chunks geladen werden) */
-    setSize: (newSize: number) => void | Promise<ResponseValue<D>[] | undefined>;
+    setSize: (newSize: number) => void | Promise<LessResponseValue<D>[] | undefined>;
     /** Erhöt die Größe um 1 */
     next: () => void;
     isReady: boolean;
@@ -28,7 +28,7 @@ export type LessStreamer<D extends { $response: any[] } = any, R = ResponseValue
     currentLength: number;
 };
 
-export type StreamerOptions<D extends {}, R = ResponseValue<D>[]> = UseFetchOptions<D, R> & {
+export type StreamerOptions<D extends {}, R = LessResponseValue<D>[]> = UseFetchOptions<D, R> & {
     chunkSize: number;
     /** @default 1 */
     defaultSize?: number;
@@ -36,7 +36,7 @@ export type StreamerOptions<D extends {}, R = ResponseValue<D>[]> = UseFetchOpti
     id?: string;
 };
 
-export default function useLessStreamer<D extends { offset?: number; limit?: number; $response: any[] }, R extends any[] = ResponseValue<D>>(
+export default function useLessStreamer<D extends { offset?: number; limit?: number; $response: any[] }, R extends any[] = LessResponseValue<D>>(
     desc: Desc<D>,
     params: Params<D> | Falsy,
     options: StreamerOptions<D, R>

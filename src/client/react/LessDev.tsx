@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useLessCognitoContext } from "./less-cognito-context";
-import { useLessCache } from "./less-cache";
-import { QueryState } from "@less/client/react/query-cache";
+import { useLessCognitoContext } from "./LessCognitoProvider";
+import { useLessCache } from "./LessCacheProvider";
+import { QueryState } from "./QueryCache";
 
 export default function LessDev() {
     const ctx = useLessCognitoContext();

@@ -1,7 +1,7 @@
 import React from "react";
-import { mergeConfigs } from "../less-client";
-import { QueryCache } from "@less/client/react/query-cache";
-import { LessQueryConfig, defaultQueryConfig } from "./use-less-query";
+import { mergeConfigs } from "../client-util";
+import { LessQueryConfig, defaultQueryConfig } from "./useLessQuery";
+import QueryCache from "./QueryCache";
 
 /** Typ der Keys, die für den Cache (`MemoryCache`) verwendet wird */
 export type LessQueryKey = {

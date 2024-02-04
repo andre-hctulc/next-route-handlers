@@ -1,5 +1,25 @@
 {
     "name": "less",
-    "main": "index.ts",
-    "private": true
+    "private": true,
+    "scripts": {
+        "build": "tsc",
+        "tc": "tsc --noEmit"
+    },
+    "dependencies": {
+        "react": "^18.2.0",
+        "stable-hash": "^0.0.3",
+        "u": "../util"
+    },
+    "devDependencies": {
+        "next": "^14.1.0"
+    },
+    "main": "./src/index.ts",
+    "exports": {
+        ".": "./src/index.ts",
+        "./src": "./src/index.ts",
+        "./src/index": "./src/index.ts",
+        "./client": "./src/client/index.ts",
+        "./src/client": "./src/client/index.ts",
+        "./src/client/index": "./src/client/index.ts"
+    }
 }

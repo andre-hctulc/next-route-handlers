@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import type { ParamIn, ParamType, Desc, ParamDesc } from "../types";
-import { dateReviver } from "src/packages/util/src/strings";
+import { dateReviver } from "u/src/strings";
 import { ParamTypeError } from "./errors";
 
 export type DynamicRequest = { headers?: Headers };

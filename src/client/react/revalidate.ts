@@ -1,8 +1,8 @@
-import { LessQueryKey, useLessCache } from "./less-cache";
-import { useLessCognitoContext } from "./less-cognito-context";
-import { QueryCache, QueryCacheKey, QueryCacheMutate, QueryCacheTagsFilter, QueryState } from "@less/client/react/query-cache";
-import { Desc, Params, ResponseValue } from "../../types";
-import { getQueryKey } from "./use-less-query";
+import { LessQueryKey, useLessCache } from "./LessCacheProvider";
+import { useLessCognitoContext } from "./LessCognitoProvider";
+import { Desc, Params, LessResponseValue } from "../../types";
+import { getQueryKey } from "./useLessQuery";
+import QueryCache, { QueryCacheMutate, QueryCacheKey, QueryState, QueryCacheTagsFilter } from "./QueryCache";
 
 export type QueryKeyFilter = string[] | ((key: any) => boolean);
 /** _und((oder)[])_ */
@@ -12,7 +12,7 @@ export function useMutateQuery() {
     const { cache } = useLessCache();
     const lessContext = useLessCognitoContext();
 
-    async function mutate<D extends object, R = ResponseValue<D>>(
+    async function mutate<D extends object, R = LessResponseValue<D>>(
         desc: Desc<D>,
         params: Params<D>,
         newData?: R | ((previousData: R | undefined) => Promise<R>)

@@ -1,13 +1,13 @@
-import type { Desc, Params, ResponseValue } from "src/packages/less";
-import { mergeConfigs } from "src/packages/less/client/less-client";
 import React from "react";
-import LessFetchError from "./less-fetch-error";
-import { Falsy } from "src/packages/util/src/utility-types";
-import { useLessCognitoContext } from "./less-cognito-context";
-import { lessFetch } from "../less-fetch";
-import { LessQueryKey, useLessCache } from "./less-cache";
-import { QueryCache, QueryCacheStateListener, QueryState } from "@less/client/react/query-cache";
+import { useLessCognitoContext } from "./LessCognitoProvider";
+import { lessFetch } from "../lessFetch";
+import { LessQueryKey, useLessCache } from "./LessCacheProvider";
 import { useMutateQuery } from "./revalidate";
+import { Desc, Params, LessResponseValue } from "../../types";
+import { Falsy } from "u/src/utility-types";
+import { mergeConfigs } from "../client-util";
+import QueryCache, { QueryCacheStateListener, QueryState } from "./QueryCache";
+import LessFetchError from "./LessFetchError";
 
 export type RefetchResult<R> =
     | {
@@ -36,7 +36,7 @@ export type UseLessQueryResult<D extends {}, R> = {
     mutate: (data?: R) => Promise<{ error: Error | null; newData: undefined | R }>;
 } & RefetchResult<R>;
 
-export type UseFetchOptions<D extends {}, R = ResponseValue<D>> = {
+export type UseFetchOptions<D extends {}, R = LessResponseValue<D>> = {
     enabled?: boolean;
     /** Debugging */
     id?: string;
@@ -94,7 +94,7 @@ export interface FetchOptions<D extends {}, R> extends Partial<LessQueryConfig> 
     tags?: (string | Falsy)[];
     cognito?: string;
     fetcher?: (params: Params<D>) => R | Promise<R>;
-    parser?: (data: ResponseValue<D>) => R | Promise<R>;
+    parser?: (data: LessResponseValue<D>) => R | Promise<R>;
 }
 
 export function getQueryKey(
@@ -124,7 +124,7 @@ export function getQueryKey(
  * @param params Paramater
  * @param options SWR/Fetch Optionen
  */
-export default function useLessQuery<D extends {}, R = ResponseValue<D>>(
+export default function useLessQuery<D extends {}, R = LessResponseValue<D>>(
     desc: Desc<D>,
     params: Params<D> | Falsy,
     options?: UseFetchOptions<D, R>
@@ -229,7 +229,7 @@ export default function useLessQuery<D extends {}, R = ResponseValue<D>>(
 /**
  * Berücksichtigt den Cache, falls angegeben
  */
-async function mountedLessFetch<D extends {}, R = ResponseValue<D>>(
+async function mountedLessFetch<D extends {}, R = LessResponseValue<D>>(
     desc: Desc<D>,
     params: Params<D>,
     cache: QueryCache,

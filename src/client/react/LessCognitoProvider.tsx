@@ -1,14 +1,13 @@
 "use client";
 
-import type { CurrentUser } from "src/lib/users/t";
 import { useSession } from "next-auth/react";
 import React from "react";
-import LessDev from "./less-dev";
+import LessDev from "./LessDev";
 
 export const LessCognitoContext = React.createContext<LessCognitoContext>({ currentUser: null, cognitoMode: false });
 
 export interface LessCognitoContext {
-    currentUser: CurrentUser | null;
+    currentUser: { id: string } | null;
     cognitoMode: boolean;
 }
 

@@ -1,16 +1,12 @@
-import { Falsy } from "src/packages/util/src/utility-types";
-import { Desc, Params, ResponseValue } from "../types";
+import { Desc, Params, LessResponseValue } from "../types";
 import { requiresFormDataBody } from "../util/util";
-import { bodyToFormData, getResponseValue, mergeConfigs, setParams } from "./less-client";
-import { LessQueryKey } from "./react/less-cache";
-import LessFetchError from "./react/less-fetch-error";
-import { QueryCache } from "@less/client/react/query-cache";
+import { bodyToFormData, getResponseValue, setParams } from "./client-util";
 
 export async function lessFetch<T extends {}>(
     desc: Desc<T>,
     params: Params<T>,
     requestInit?: RequestInit
-): Promise<{ response: Response; responseValue: ResponseValue<T> }> {
+): Promise<{ response: Response; responseValue: LessResponseValue<T> }> {
     let inp = desc.$path;
     const method = (desc.$method || requestInit?.method || "GET").toLowerCase();
     const headers = new Headers(requestInit?.headers || {});
