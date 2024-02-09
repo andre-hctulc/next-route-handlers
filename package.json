@@ -7,11 +7,13 @@
     },
     "dependencies": {
         "react": "^18.2.0",
-        "stable-hash": "^0.0.3",
-        "u": "../util"
+        "stable-hash": "^0.0.3"
     },
     "devDependencies": {
-        "next": "^14.1.0"
+        "@types/react": "^18.2.55",
+        "next": "^14.1.0",
+        "next-auth": "^4.24.5",
+        "ts-node": "^10.9.2"
     },
     "main": "./src/index.ts",
     "exports": {

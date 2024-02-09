@@ -1,3 +1,4 @@
+import { dateReviver } from "../sys/util";
 import { Desc, ParamIn, ParamType, LessResponseType } from "../types";
 import { LessQueryConfig } from "./react/useLessQuery";
 
@@ -96,16 +97,6 @@ export function bodyToFormData(body: {}, desc: Desc<any>) {
 
     return formData;
 }
-/** Revives Buffers and Dates. */
-function jsonReviver(key: string, value: any) {
-    if (typeof value === "string" && /^\d{4}-[01]\d-[0-3]\dT[012]\d(?::[0-6]\d){2}\.\d{3}Z$/.test(value)) {
-        const date = new Date(value);
-        // If the date is valid then go ahead and return the date object.
-        if (+date === +date) return date;
-    } else if (value && typeof value === "object" && value.type === "Buffer" && Array.isArray(value.data)) {
-        return new Uint8Array(value.data).buffer;
-    } else return value;
-}
 
 export async function getResponseValue(res: Response, type: LessResponseType) {
     if (!res.ok) return undefined;
@@ -119,7 +110,7 @@ export async function getResponseValue(res: Response, type: LessResponseType) {
                 const contentType = res.headers.get("content-type");
                 const text = await res.text();
                 // startsWith statt ===, da header auch 'application/json ...' sein kann‚
-                return contentType?.startsWith("application/json") ? (text ? JSON.parse(text, jsonReviver) : undefined) : text;
+                return contentType?.startsWith("application/json") ? (text ? JSON.parse(text, dateReviver) : undefined) : text;
             } catch (err) {
                 return undefined;
             }
@@ -136,7 +127,7 @@ export async function getResponseValue(res: Response, type: LessResponseType) {
         case "object":
             try {
                 const text = await res.text();
-                const obj = text ? JSON.parse(text, jsonReviver) : undefined;
+                const obj = text ? JSON.parse(text, dateReviver) : undefined;
                 return obj;
             } catch (err) {
                 return undefined;
@@ -190,3 +181,5 @@ export function mergeConfigs(config1: Partial<LessQueryConfig>, config2: LessQue
 
     return newConfig;
 }
+
+export type Falsy = null | undefined | false | 0 | "";

@@ -2,7 +2,6 @@
     "compilerOptions": {
         "target": "ES2022",
         "lib": ["dom", "dom.iterable", "esnext"],
-        "allowJs": true,
         "skipLibCheck": true,
         "strict": true,
         "forceConsistentCasingInFileNames": true,
@@ -10,9 +9,9 @@
         "esModuleInterop": true,
         "module": "esnext",
         "moduleResolution": "node",
-        "resolveJsonModule": true,
         "isolatedModules": true,
         "jsx": "preserve"
     },
-    "include": ["src/**/*.ts", "src/**/*.tsx"]
+    "include": ["src/**/*.ts", "src/**/*.tsx"],
+    "exclude": ["example"]
 }

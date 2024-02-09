@@ -1,10 +1,10 @@
 import { Desc, Params, LessResponseValue } from "../types";
-import { requiresFormDataBody } from "../util/util";
+import { requiresFormDataBody } from "../sys/util";
 import { bodyToFormData, getResponseValue, setParams } from "./client-util";
 
 export async function lessFetch<T extends {}>(
     desc: Desc<T>,
-    params: Params<T>,
+    params: Params<T> | FormData,
     requestInit?: RequestInit
 ): Promise<{ response: Response; responseValue: LessResponseValue<T> }> {
     let inp = desc.$path;
@@ -13,6 +13,12 @@ export async function lessFetch<T extends {}>(
     const hasBody = method !== "get" && method !== "delete";
     let body: any = {};
     const searchParams = new URLSearchParams();
+
+    if (params instanceof FormData) {
+        const newParams: any = {};
+        params.forEach((value, key) => (newParams[key] = value));
+        params = newParams;
+    }
 
     setParams(desc, headers, body, searchParams, params || {});
 

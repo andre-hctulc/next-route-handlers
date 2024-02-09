@@ -30,7 +30,7 @@ interface LessCacheContextProviderProps {
 
 export function useLessCache<O extends boolean = false>(optional?: O): O extends true ? LessCacheContext | undefined : LessCacheContext {
     const cache = React.useContext(LessCacheContext);
-    if (!cache && !optional) throw new Error("`LessCacheContext` required");
+    if (!cache && !optional) throw new Error("`LessCacheProvider` required");
     return cache as any;
 }
 

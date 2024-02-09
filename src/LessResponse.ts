@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { setHeader } from "./util";
+import { setHeader } from "./sys/util";
 
 /** Extends the NextResponse with some helper functions. (NextJS >= 13) */
-export class LessResponse extends NextResponse {
+export default class LessResponse extends NextResponse {
     /**
      * Sends an empty response with the given status and status message.
      * @param status

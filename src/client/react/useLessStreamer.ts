@@ -5,7 +5,8 @@ import { useLessCognitoContext } from "./LessCognitoProvider";
 import { useLessCache } from "./LessCacheProvider";
 import { LessResponseValue, Desc, Params } from "../../types";
 import QueryCache, { QueryCacheStateListener } from "./QueryCache";
-import { Falsy } from "u/src/utility-types";
+import { Falsy } from "../client-util";
+
 
 export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseValue<D>> = {
     isError: boolean;
@@ -63,7 +64,7 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
             if (query.isError) return [undefined, undefined, true, false];
             pages.push(...query.data);
         }
-        return [pages as R, pages.length ? pages[pages.length - 1] || null : undefined, false, true];
+        return [pages as R, pages[pages.length - 1] || null, false, true];
     }, [queries]);
     const isReady = isError || isSuccess;
     const isFinished = React.useMemo(() => {
@@ -71,9 +72,10 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
         return chunkSize * size !== (queries as any)?.length;
     }, [chunkSize, queries, size]);
     const currentLength = Array.isArray(queries) ? queries.length : 0;
+    const errQuery = React.useMemo(() => queries?.find(q => q.error), [queries]);
+    const [isLoading, setIsLoading] = React.useState(false);
 
     React.useEffect(() => {
-        let x = preKey;
         preKey.current = currentSerializedKey;
 
         if (!currentSerializedKey) return;
@@ -119,13 +121,17 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     }
 
     async function revalidate(isInterrupted: () => boolean) {
+        setIsLoading(true);
         const queries: RefetchResult<R>[] = [];
         for (let i = 1; i <= size; i++) {
             const page = await fetchPage(i);
             if (isInterrupted()) return;
             queries.push(page);
         }
-        if (!isInterrupted()) setQueries(queries);
+        if (!isInterrupted()) {
+            setQueries(queries);
+            setIsLoading(false);
+        }
     }
 
     function next() {
@@ -133,10 +139,10 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     }
 
     return {
-        isError: !!query.error,
-        error: query.error,
+        isError: !!errQuery,
+        error: errQuery?.error || null,
         size: queries?.length || 0,
-        isLoading: query.isLoading,
+        isLoading,
         pages: pages as any,
         setSize,
         isReady,

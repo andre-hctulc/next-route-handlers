@@ -2,10 +2,9 @@ import React from "react";
 import { useLessCognitoContext } from "./LessCognitoProvider";
 import { lessFetch } from "../lessFetch";
 import { LessQueryKey, useLessCache } from "./LessCacheProvider";
-import { useMutateQuery } from "./revalidate";
+import { DataMutation, useMutateQuery } from "./revalidate";
 import { Desc, Params, LessResponseValue } from "../../types";
-import { Falsy } from "u/src/utility-types";
-import { mergeConfigs } from "../client-util";
+import { Falsy, mergeConfigs } from "../client-util";
 import QueryCache, { QueryCacheStateListener, QueryState } from "./QueryCache";
 import LessFetchError from "./LessFetchError";
 
@@ -33,7 +32,7 @@ export type UseLessQueryResult<D extends {}, R> = {
     isReady: boolean;
     enabled: boolean;
     /** Mounted Mutation */
-    mutate: (data?: R) => Promise<{ error: Error | null; newData: undefined | R }>;
+    mutate: (newData?: DataMutation<R>) => Promise<{ error: Error | null; newData: undefined | R }>;
 } & RefetchResult<R>;
 
 export type UseFetchOptions<D extends {}, R = LessResponseValue<D>> = {
@@ -207,7 +206,7 @@ export default function useLessQuery<D extends {}, R = LessResponseValue<D>>(
         return await refetch(params, refetchOptions);
     }
 
-    async function mutate(newData?: R | ((previousData: R | undefined) => Promise<R>)): Promise<{ error: Error | null; newData: undefined | R }> {
+    async function mutate(newData?: DataMutation<R>): Promise<{ error: Error | null; newData: undefined | R }> {
         if (!params) return { error: new Error("Query disabled"), newData: undefined };
         return mut(desc, params, newData);
     }
@@ -311,16 +310,25 @@ async function mountedLessFetch<D extends {}, R = LessResponseValue<D>>(
                 // `isRevalidating=null` setzen, sonst wird bei Err retries auf promise gewartet, der bereits rejected wurde.
                 cache?.update(key, { isRevalidating: null });
 
-                return new Promise((resolve, reject) => {
-                    setTimeout(() => {
-                        mountedLessFetch(desc, params, cache, fetchOptions, errRetryCount + 1)
-                            .then(result => resolve(result))
-                            .catch(err => reject(err));
+                const retryResult = await new Promise<any>(resolve => {
+                    setTimeout(async () => {
+                        try {
+                            const r = await mountedLessFetch(desc, params, cache, fetchOptions, errRetryCount + 1);
+                            resolve(r);
+                        } catch (err) {
+                            resolve({ err: err || new Error("Error retry failed") });
+                        }
                     }, config.errRetryTimeout);
                 });
-            }
 
-            cache?.update(key, { data: null, error: fetchErr, response, isRevalidating: null });
+                // Changed *****
+                if (retryResult.err) {
+                    if (errRetryCount === config.maxErrRetries - 1) {
+                        cache?.update(key, { data: null, error: fetchErr, response, isRevalidating: null });
+                    }
+                    throw retryResult.err;
+                } else return retryResult;
+            } else cache?.update(key, { data: null, error: fetchErr, response, isRevalidating: null });
         }
 
         config.onError?.(fetchErr);

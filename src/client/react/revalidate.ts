@@ -8,6 +8,8 @@ export type QueryKeyFilter = string[] | ((key: any) => boolean);
 /** _und((oder)[])_ */
 export type QueryTagFilter = (string | string[])[];
 
+export type DataMutation<T> = T | ((previousData: T | undefined) => Promise<T> | T) | Promise<T>;
+
 export function useMutateQuery() {
     const { cache } = useLessCache();
     const lessContext = useLessCognitoContext();
@@ -15,7 +17,7 @@ export function useMutateQuery() {
     async function mutate<D extends object, R = LessResponseValue<D>>(
         desc: Desc<D>,
         params: Params<D>,
-        newData?: R | ((previousData: R | undefined) => Promise<R>)
+        newData?: DataMutation<R>
     ): Promise<{ error: Error | null; newData: undefined | R }> {
         const key = getQueryKey(desc, params, lessContext.cognitoMode ? lessContext.currentUser?.id || "" : undefined);
         const state = cache.get(key);
@@ -26,7 +28,12 @@ export function useMutateQuery() {
         }
 
         try {
-            const newD = typeof newData === "function" ? await (newData as (previousData: R | undefined) => Promise<R> | R)(state?.data?.d) : newData;
+            const newD =
+                newData instanceof Promise
+                    ? await newData
+                    : typeof newData === "function"
+                    ? await (newData as (previousData: R | undefined) => Promise<R> | R)(state?.data?.d)
+                    : newData;
             // TODO race conditions mit mounted queries fetch, da hier nicht geprüft wird, ob QueryState.isRevalidating gerade true ist
             cache.update(key as any, { data: { d: newD }, isRevalidating: null, error: null });
             return { newData: newD, error: null };

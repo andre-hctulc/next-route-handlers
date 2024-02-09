@@ -10,8 +10,8 @@ export type UseLessMutationData<R> =
 export type UseLessMutationResult<D extends {}, R = LessResponseValue<D>> = {
     isLoading: boolean;
     isReady: boolean;
-    mutate: (params: Params<D>, requestInit?: RequestInit) => Promise<UseLessMutationData<R>>;
-    /** Setzt alle Status zurück */
+    mutate: (params: Params<D> | FormData, requestInit?: RequestInit) => Promise<UseLessMutationData<R>>;
+    /** Resets the current status */
     reset: () => void;
 } & UseLessMutationData<R>;
 
@@ -28,7 +28,7 @@ export default function useLessMutation<D extends {}, R = LessResponseValue<D>>(
     const [error, setError] = React.useState<LessFetchError | null>(null);
     const [data, setData] = React.useState<LessResponseValue<D>>();
 
-    async function mutate(params: Params<D>, requestInit?: RequestInit): Promise<UseLessMutationData<LessResponseValue<D>>> {
+    async function mutate(params: Params<D> | FormData, requestInit?: RequestInit): Promise<UseLessMutationData<LessResponseValue<D>>> {
         const resolve = (error: LessFetchError | null, data: LessResponseValue<D> | undefined) => {
             setIsLoading(false);
             setIsSuccess(!error);
