@@ -1,6 +1,6 @@
-import { dateReviver } from "../sys/util";
-import { Desc, ParamIn, ParamType, LessResponseType } from "../types";
-import { LessQueryConfig } from "./react/useLessQuery";
+import { dateReviver } from "../system";
+import type { Desc, ParamIn, ParamType, LessResponseType } from "../types";
+import type { LessQueryConfig } from "./react/useLessQuery";
 
 export function requiresFormDataBody(desc: Desc<any>): boolean {
     return Object.values(desc).some(v => typeof v === "object" && ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body");
@@ -64,7 +64,7 @@ function paramToFormDataValue(value: any, paramDef: { type: ParamType; in: Param
         case "string":
             return value + "";
         case "blob-array":
-            (value as (Blob | ArrayBuffer)[]).map(item => (item instanceof ArrayBuffer || item instanceof Uint8Array ? new Blob([item]) : item));
+            return (value as (Blob | ArrayBuffer)[]).map(item => (item instanceof ArrayBuffer || item instanceof Uint8Array ? new Blob([item]) : item));
         case "blob":
             return value instanceof ArrayBuffer || value instanceof Uint8Array ? new Blob([value]) : value;
         case "object":
@@ -75,7 +75,7 @@ function paramToFormDataValue(value: any, paramDef: { type: ParamType; in: Param
     }
 }
 
-export function bodyToFormData(body: {}, desc: Desc<any>) {
+export function bodyToFormData(body: object, desc: Desc<any>) {
     const formData = new FormData();
 
     for (const propName in body) {
@@ -164,7 +164,7 @@ export function toBlobArray<R extends boolean = false>(
 }
 
 /**
- * `config1` überschreibt `config2`
+ * `config1` overwrites `config2`
  * @param config1
  * @param config2
  * @returns

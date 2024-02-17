@@ -1,4 +1,4 @@
-import withLess from "less/src";
+import withLess from "@less/src";
 import { getArticles } from "src/acrticles";
 import { GETArticlesCountDesc } from "src/api-desc";
 
@@ -7,7 +7,7 @@ export interface GETArticlesCount {
 }
 
 export async function GET(...args: any) {
-    return await withLess(args, GETArticlesCountDesc, async ({ params }) => {
+    return await withLess(args, GETArticlesCountDesc, async () => {
         const articles = await getArticles();
         return articles.length;
     });

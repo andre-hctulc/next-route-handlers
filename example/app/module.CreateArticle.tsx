@@ -1,28 +1,35 @@
 "use client";
 
-import { useLessMutation } from "less/src/client";
+import { useLessMutation, useMutateTags } from "@less/src/client";
 import React from "react";
 import { POSTArticleDesc } from "src/api-desc";
 
 interface CreateArticleProps {
-    onCreate?: (articleId: string) => void;
     style?: React.CSSProperties;
+    id?: string;
 }
 
 export default function CreateArticle(props: CreateArticleProps) {
     const { mutate } = useLessMutation(POSTArticleDesc);
+    const revalidate = useMutateTags();
+    const formRef = React.useRef<HTMLFormElement>(null);
 
     async function handleSubmit(data: FormData) {
-        const { data: articleId, isError } = await mutate(data);
+        const title = data.get("title") as string;
+        const content = data.get("content") as string;
+        const { isError } = await mutate({ article: { content, title } });
         if (isError) return alert("An error occured 😵‍💫");
-        props.onCreate?.(articleId);
+        revalidate(["articles"]);
+        formRef.current?.reset();
     }
 
     return (
-        <form style={props.style} action={handleSubmit}>
-            <input type="text" name="title" />
-            <textarea style={{ height: 200 }} name="content" />
-            <button>Erstellen</button>
+        <form id={props.id} ref={formRef} action={handleSubmit}>
+            <label>Title</label>
+            <input required type="text" name="title" />
+            <label>Content</label>
+            <textarea name="content" />
+            <button style={{ alignSelf: "center" }}>Erstellen</button>
         </form>
     );
 }

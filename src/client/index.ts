@@ -1,11 +1,10 @@
 export * from "./lessFetch";
-export * from "./react/LessCognitoProvider";
-export { default as LessCognitoProvider } from "./react/LessCognitoProvider";
-export * from "./react/LessCacheProvider";
-export { default as LessCacheProvider } from "./react/LessCacheProvider";
+export { default as lessFetch } from "./lessFetch";
+export * from "./react/LessProvider";
+export { default as LessProvider } from "./react/LessProvider";
 export * from "./react/LessFetchError";
 export { default as LessFetchError } from "./react/LessFetchError";
-export * from "./react/revalidate";
+export * from "./react/cache";
 export * from "./react/useLessMutation";
 export { default as useLessMutation } from "./react/useLessMutation";
 export * from "./react/useLessQuery";

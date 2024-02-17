@@ -1,8 +1,8 @@
 import { Desc, Params, LessResponseValue } from "../types";
-import { requiresFormDataBody } from "../sys/util";
+import { requiresFormDataBody } from "../system";
 import { bodyToFormData, getResponseValue, setParams } from "./client-util";
 
-export async function lessFetch<T extends {}>(
+export default async function lessFetch<T extends object>(
     desc: Desc<T>,
     params: Params<T> | FormData,
     requestInit?: RequestInit
@@ -15,8 +15,8 @@ export async function lessFetch<T extends {}>(
     const searchParams = new URLSearchParams();
 
     if (params instanceof FormData) {
-        const newParams: any = {};
-        params.forEach((value, key) => (newParams[key] = value));
+        const newParams: any = {} ;
+        params.forEach((value, key) => ((newParams as Record<string, any>)[key] = value));
         params = newParams;
     }
 

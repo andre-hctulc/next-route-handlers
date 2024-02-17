@@ -1,12 +1,30 @@
 import type { Desc, LessApiHandler } from "./types";
-import { DynamicRequest, errorMessageToDevStatusText, parseParams } from "./sys/util";
+import { DynamicRequest, parseParams } from "./system";
 import type { NextRequest } from "next/server";
 import LessResponse from "./LessResponse";
 import { LessError } from "./error";
 
+/**
+ * `Error.message` -> valid `Response.statusText`.
+ *
+ * The status may not contain certain cahracters and my have a maximum length.
+ * This function sanitizes the error message.
+ *
+ * @param errorMessage `Error.message`
+ * @returns Validen `Response.statusText`
+ *  */
+export function errorMessageToDevStatusText(errorMessage: string) {
+    errorMessage = "[dev_mode '(500) - Internal Server Error'] " + errorMessage;
+    // Maximallänge hngt von browser ab. 300 sollten immer kurz genug sein.
+    const truncatedErrorMessage = errorMessage.length > 300 ? errorMessage.substring(0, 300) + "..." : errorMessage;
+    // Unerlaubte Zeichen entfernen
+    const sanitizedErrorMessage = truncatedErrorMessage.replace(/[\r\n]+/g, " ");
+    return sanitizedErrorMessage;
+}
+
 const devMode = process.env.NODE_ENV === "development";
 
-export default async function withLess<T extends {} = {}>(
+export default async function withLess<T extends object = object>(
     args: [NextRequest, Record<string, string> | null | undefined] | [NextRequest, Record<string, string> | null | undefined, DynamicRequest], // [NextRequest, pathSegements, STaticRequest]
     desc: Desc<T> | null,
     handler: LessApiHandler<T>
@@ -16,7 +34,7 @@ export default async function withLess<T extends {} = {}>(
     const staticRequest = args[2];
 
     try {
-        const parsedParams = await parseParams<T>(req as any, desc || ({ $response: "any" } as any), staticRequest);
+        const parsedParams = await parseParams<T>(req, desc || ({ $response: "any" } as Desc<T>), staticRequest);
         const result = await handler({ params: parsedParams, pathSegments, req: req });
 
         // response

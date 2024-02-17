@@ -1,19 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import type { Session } from "next-auth";
 import type { NextRequest } from "next/server";
 
-export type LessApiHandler<T extends {}> = (req: {
+export type LessApiHandler<T extends object> = (req: {
     params: Params<T>;
     pathSegments: Record<string, string | string[]>;
     req: NextRequest;
 }) => Response | LessResponseValue<T> | Promise<Response | LessResponseValue<T>>;
 
-export type LessApiHandlerX<T extends {}> = (
+export type LessApiHandlerX<T extends object> = (
     req: {
         params: Partial<Params<T>>;
         pathSegments: Record<string, string | string[]>;
-        /** This is only provided, when $requireUser or $pullUser is set to true. */
-        session: Session | null;
         req: NextApiRequest;
     },
     res: NextApiResponse
@@ -23,7 +20,7 @@ export type LessApiHandlerX<T extends {}> = (
 
 /** \<D\>esc */
 export type ParamDesc<T> = { type: ParamTypeMap<T>; in: ParamIn; required?: boolean };
-export type Params<D extends {}> = Omit<D, `$${string}`>;
+export type Params<D extends object> = Omit<D, `$${string}`>;
 export type ParamType = "string" | "number" | "boolean" | "object" | "any" | "blob" | "blob-array";
 export type ParamIn = "body" | "query" | "header";
 
@@ -44,7 +41,8 @@ type ParamTypeMap<T> = T extends string
 // response --
 
 export type LessResponseType = "string" | "number" | "boolean" | "object" | "void" | "any" | "blob" | "stream";
-export type LessResponseValue<T extends {}> = T extends { $response?: any } ? T["$response"] : any;
+
+export type LessResponseValue<T extends object> = T extends { $response?: any } ? T["$response"] : any;
 
 type ResponseTypeMap<R> = R extends string
     ? "string"
@@ -54,7 +52,7 @@ type ResponseTypeMap<R> = R extends string
     ? "boolean"
     : R extends Blob | Buffer | ReadableStream
     ? "blob" | "stream"
-    : R extends {} | ReadableStream
+    : R extends object | ReadableStream
     ? "object" | "stream" | "any"
     : R extends void
     ? "void"
@@ -62,7 +60,7 @@ type ResponseTypeMap<R> = R extends string
 
 // others --
 
-export type Desc<T extends {}> = { [K in Exclude<keyof T, `$${string}`>]: ParamDesc<T[K]> } & (T extends {
+export type Desc<T extends object> = { [K in Exclude<keyof T, `$${string}`>]: ParamDesc<T[K]> } & (T extends {
     $response: infer R;
 }
     ? { $response: ResponseTypeMap<R> }

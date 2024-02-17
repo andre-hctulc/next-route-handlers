@@ -1,4 +1,4 @@
-import withLess from "less/src";
+import withLess from "@less/src";
 import { GETArticleDesc, PUTArticleDesc, POSTArticleDesc, DELETEArticleDesc } from "src/api-desc";
 import { Article } from "src/types";
 import { getArticle, updateArticle, createArticle, deleteArticle } from "src/acrticles";
@@ -17,19 +17,21 @@ export async function GET(...args: any) {
 
 export interface PUTArticle {
     articleId: string;
-    data: Partial<Article>;
+    content?: string;
+    title?: string;
     $response: Article;
 }
 
 export async function PUT(...args: any) {
     return await withLess(args, PUTArticleDesc, async ({ params }) => {
-        const newArticle = await updateArticle(params.articleId, params.data);
+        if (params.content === undefined && params.title === undefined) throw new Error("`content` or `title` is required");
+        const newArticle = await updateArticle(params.articleId, { content: params.content, title: params.title });
         return newArticle;
     });
 }
 
 export interface POSTArticle {
-    article: Article;
+    article: Omit<Article, "id">;
     $response: string;
 }
 

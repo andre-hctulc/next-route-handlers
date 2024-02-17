@@ -1,0 +1,87 @@
+.Page {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    height: 100%;
+}
+
+hr {
+    margin: 10px;
+}
+
+nav {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}
+
+textarea {
+    overflow-y: auto;
+    min-width: 0px;
+}
+
+nav > span {
+    border-radius: 2;
+    width: 15px;
+    padding: auto;
+    text-align: center;
+    border: 1.5px solid gray;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+header > i {
+    margin-left: 10px;
+}
+
+article {
+    display: flex;
+    flex-direction: column;
+    border: 1.5px solid grey;
+    border-radius: 10px;
+    height: 300px;
+    width: 300px;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+article > textarea {
+    flex: 1;
+}
+
+article > button {
+    margin-top: 10px;
+    align-self: flex-end;
+}
+
+.ArticleSkeleton {
+    border-radius: 10px;
+    height: 300px;
+    width: 300px;
+    background: lightgrey;
+}
+
+.Articles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    flexgrow: 1;
+    padding-left: 50px;
+}
+
+form {
+    width: 330px;
+    height: 400px;
+    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    margin-left: 50px;
+}
+
+form > textarea {
+    flex: 1;
+}
+
+form > button {
+    width: 200px;
+}

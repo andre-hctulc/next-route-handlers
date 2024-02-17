@@ -1,18 +1,20 @@
 "use client";
 
 import React from "react";
-import { useLessCognitoContext } from "./LessCognitoProvider";
-import { useLessCache } from "./LessCacheProvider";
-import { QueryState } from "./QueryCache";
+import { useLess } from "./LessProvider";
+import { QueryState } from "../QueryCache";
 
 export default function LessDev() {
-    const ctx = useLessCognitoContext();
-    const { cache } = useLessCache();
+    const ctx = useLess();
+    const { queryCache: cache } = useLess();
     const [open, setOpen] = React.useState(false);
     const cacheEntries = React.useMemo<{ key: string; state: QueryState }[]>(() => {
-        return Array.from(cache.keys()).map(key => ({ key: key, state: cache.get(key) as any }));
+        if (!open || !ctx.debug) return [];
+        return Array.from(cache.keys()).map(key => ({ key: key, state: cache.get(key)! }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cache, open]);
+
+    if (!ctx.debug) return null;
 
     return (
         <div

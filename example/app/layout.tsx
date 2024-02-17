@@ -1,6 +1,6 @@
 "use client";
 
-import { LessCacheProvider } from "less/src/client";
+import { LessProvider } from "@less/src/client";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -10,7 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <meta name="description" content="This is a simple less example" />
             </head>
             <body>
-                <LessCacheProvider>{children}</LessCacheProvider>
+                <LessProvider>{children}</LessProvider>
             </body>
         </html>
     );

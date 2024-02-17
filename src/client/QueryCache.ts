@@ -1,10 +1,12 @@
 import hash from "stable-hash";
 
+/*
+Independent from less types/api
+*/
+
 /**
- * Status eines Eintrages in dem Cache
- *
- * Verwendet npm's *stable_hash* für Key-Serialization
- */
+ * Query state
+ * */
 export type QueryState = {
     isRevalidating: Promise<any> | null;
     /**
@@ -15,7 +17,6 @@ export type QueryState = {
     error: Error | null;
     /** Zeitstempel des Zeitpunktes, in dem `data` das letzte mal im Status gesetzt wurden */
     timestamp: number | undefined;
-    key: Omit<QueryCacheKey, "params">;
     tags: Set<string>;
     response: Response | null;
 };
@@ -24,26 +25,17 @@ export type QueryCacheKey = object | string;
 export type QueryCacheStateListener = (state: QueryState | null, queueIndex: number) => void;
 
 /**
- * Wird **nicht** _undefined_ returnt, wird der _Return Value_ der neue Wert.
+ * If **not** _undefined_ is returned, the return value is used as the new data
  * */
-export type QueryCacheMutate = ((key: QueryCacheKey, state: QueryState) => any) | { key: QueryCacheKey; data: any };
-export type QueryCacheDelete = (key: QueryCacheKey, state: QueryState) => boolean | QueryCacheKey;
+export type QueryCacheMutate = ((state: QueryState) => any) | { key: QueryCacheKey; data: any };
+export type QueryCacheDelete = (state: QueryState) => boolean | QueryCacheKey;
 type QueryStateUpdate = Partial<Omit<QueryState, "timestamp" | "key" | "tags" | "data">> & {
     tags?: string[] | undefined | Set<string>;
     data?: { d: any } | null;
 };
 
 /**
- * Logik: _und((oder)[])_
- *
- * Kann in Cache-Mutations verwendet werden
- *  */
-export type QueryCacheTagsFilter = (string | string[])[];
-
-/**
- * Memory-Cache für asynchrone/simultane Abfragen an Datenquellen (z.B. `fetch`).
- *
- * Funktionalität ähnlich wie `SWR`-Caching
+ * Memory-Cache for async/simultanious requests to data sources (e.g. `fetch`).
  */
 export default class QueryCache {
     #cache: Map<string, QueryState> = new Map();
@@ -122,21 +114,10 @@ export default class QueryCache {
             isRevalidating: null,
             tags: new Set<string>(),
             timestamp: undefined,
-            key: {} as any,
             response: null,
             // Aktueller Status (falls vorhanden)
             ...currentState,
         };
-
-        // * key
-
-        if (typeof key === "object") {
-            newState.key = { ...key };
-            // params im key nicht cachen (Diese dienen nur dazu den cache key zu bestimmen)
-            delete (newState.key as any).params;
-        }
-        // Sollte nicht vorkommen!
-        else if (!newState.key) throw new Error("Unexpectedly received no key or a serialized key");
 
         // * Tags
         // TODO Hier sind evtl noch tags von ounmounted queries enthalten!
@@ -171,10 +152,12 @@ export default class QueryCache {
         if (typeof mutator === "function") {
             for (const k of this.#cache.keys()) {
                 const state = this.#cache.get(k)!;
-                const newData = mutator(state.key, state);
+                const newData = mutator(state);
                 if (newData !== undefined) this.update(k, { data: newData });
             }
-        } else this.update(mutator.key, { data: mutator.data });
+        } else {
+            this.update(mutator.key, { data: mutator.data });
+        }
     }
 
     /** Entfernt Einträge aus dem Cache und benachrichtigt Listeners */
@@ -182,24 +165,13 @@ export default class QueryCache {
         if (typeof del === "function") {
             // Keys vorher bestimmen, da in dem Loop Einträge entfernt werden
             const keys = Array.from(this.#cache.keys());
-            const tags = Array.from(this.#cache.values()).map(state => Array.from(state.tags));
+            // const tags = Array.from(this.#cache.values()).map(state => Array.from(state.tags));
 
             for (const k of keys) {
                 const state = this.#cache.get(k)!;
-                const reval = del(state.key, state);
+                const reval = del(state);
                 if (reval) this.delete(k);
             }
         } else this.delete(del);
-    }
-
-    // * Weitere statische Methoden
-
-    static stateIncludesTags(state: QueryState, tagsFilter: QueryCacheTagsFilter) {
-        const tags = state.tags;
-        if (!tags?.size) return false;
-        return tagsFilter.every(tagOrTagArr => {
-            if (typeof tagOrTagArr === "string") return tags.has(tagOrTagArr);
-            else return tagOrTagArr.some(tag => tags.has(tag));
-        });
     }
 }

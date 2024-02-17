@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setHeader } from "./sys/util";
+import { setHeader } from "./system";
 
 /** Extends the NextResponse with some helper functions. (NextJS >= 13) */
 export default class LessResponse extends NextResponse {

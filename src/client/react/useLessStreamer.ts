@@ -1,40 +1,44 @@
 import LessFetchError from "./LessFetchError";
 import React from "react";
-import useLessQuery, { RefetchResult, UseFetchOptions, getQueryKey } from "./useLessQuery";
-import { useLessCognitoContext } from "./LessCognitoProvider";
-import { useLessCache } from "./LessCacheProvider";
-import { LessResponseValue, Desc, Params } from "../../types";
-import QueryCache, { QueryCacheStateListener } from "./QueryCache";
-import { Falsy } from "../client-util";
-
+import useLessQuery, { RefetchResult, UseFetchOptions } from "./useLessQuery";
+import { useLess } from "./LessProvider";
+import type { LessResponseValue, Desc, Params } from "../../types";
+import QueryCache, { QueryCacheStateListener } from "../QueryCache";
+import type { Falsy } from "../client-util";
+import { getQueryKey, streamerTag, useMutateQuery } from "./cache";
+import { randomId } from "../../system";
 
 export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseValue<D>> = {
     isError: boolean;
     error: LessFetchError | null;
     isLoading: boolean;
-    /** Alle Daten */
+    /** Merged pages data */
     pages: R | undefined;
-    /** Daten der aktuellsten (letzten) Seite */
+    /** Data of the current pages */
     page: R | undefined | null;
+    /** Current size */
     size: number;
-    /** Setzt die größe des Steramers (Wie viel chunks geladen werden) */
+    /** Sets the size */
     setSize: (newSize: number) => void | Promise<LessResponseValue<D>[] | undefined>;
-    /** Erhöt die Größe um 1 */
+    /** Increases size by 1 */
     next: () => void;
     isReady: boolean;
     chunkSize: number;
-    /** Alle Daten wurden geladen */
+    /** All pages loaded */
     isFinished: boolean;
-    /** Anzahl der  */
-    currentLength: number;
+    /** The active size of the streamer. Can differ from `size`  */
+    currentSize: number;
+    /** Mounted revalidate */
+    revalidate: () => void;
 };
 
-export type StreamerOptions<D extends {}, R = LessResponseValue<D>[]> = UseFetchOptions<D, R> & {
+export type StreamerOptions<D extends object, R = LessResponseValue<D>[]> = UseFetchOptions<D, R> & {
     chunkSize: number;
     /** @default 1 */
     defaultSize?: number;
-    /** Für die Identifizierung beim Debuggen */
+    /** For identification during debugging */
     id?: string;
+    resetSizeOnRevalidate?: boolean;
 };
 
 export default function useLessStreamer<D extends { offset?: number; limit?: number; $response: any[] }, R extends any[] = LessResponseValue<D>>(
@@ -43,28 +47,25 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     options: StreamerOptions<D, R>
 ): LessStreamer<D, R> {
     const enabled = options.enabled !== false;
-    const lessContext = useLessCognitoContext();
-    const cognito = lessContext.cognitoMode ? lessContext.currentUser?.id || "" : undefined;
-    const { cache } = useLessCache();
+    const { queryCache: cache, userRequired, currentUser, queryConfig: globalConfig } = useLess<any>();
+    const cognito = userRequired ? currentUser?.id || "" : undefined;
     const chunkSizeRef = React.useRef(options.chunkSize);
     const chunkSize = chunkSizeRef.current;
-    const [size, setSize] = React.useState(options.defaultSize || 1);
-    const limit = React.useMemo(() => size * chunkSize, [size, chunkSize]);
-    const currentBaseKey = enabled && params && getQueryKey(desc, params, cognito);
-    const preKey = React.useRef<any>();
-    const currentSerializedBaseKey = currentBaseKey && QueryCache.serializeKey(currentBaseKey);
-    const currentKey = enabled && params && getQueryKey(desc, { limit: size * chunkSize, offset: limit - chunkSize, ...params }, cognito);
-    const currentSerializedKey = currentKey && QueryCache.serializeKey(currentKey);
+    const [size, setSize] = React.useState(options.defaultSize ?? 1);
+    const baseKey = enabled && params && getQueryKey(desc, { ...params, offset: undefined, limit: undefined }, cognito, { streamer: true });
+    /** Used as dependency in effects */
+    const serBaseKey = baseKey && QueryCache.serializeKey(baseKey);
+    /** options contains here the query config used in page fetches  */
     const query = useLessQuery(desc, null, options);
     const [queries, setQueries] = React.useState<RefetchResult<R>[] | undefined>(undefined);
     const [pages, page, isError, isSuccess] = React.useMemo<[R | undefined, R | undefined, boolean, boolean]>(() => {
         if (!queries) return [undefined, undefined, false, false];
-        const pages: any[] = [];
+        const pages: R[] = [];
         for (const query of queries) {
             if (query.isError) return [undefined, undefined, true, false];
-            pages.push(...query.data);
+            pages.push(query.data);
         }
-        return [pages as R, pages[pages.length - 1] || null, false, true];
+        return [pages.flat(1) as R, pages[pages.length - 1] || null, false, true];
     }, [queries]);
     const isReady = isError || isSuccess;
     const isFinished = React.useMemo(() => {
@@ -74,57 +75,71 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     const currentLength = Array.isArray(queries) ? queries.length : 0;
     const errQuery = React.useMemo(() => queries?.find(q => q.error), [queries]);
     const [isLoading, setIsLoading] = React.useState(false);
+    const id = React.useMemo(() => "streamer_id:" + randomId(), []);
+    const reval = useMutateQuery();
 
+    // Revalidate Effect
     React.useEffect(() => {
-        preKey.current = currentSerializedKey;
-
-        if (!currentSerializedKey) return;
+        if (!serBaseKey) return;
 
         let interrupted = false;
+        const baseKey = serBaseKey;
+        const _cache = cache;
 
-        const listener: QueryCacheStateListener = state => {
-            // Alle pages
-            if (state === null) {
-                revalidate(() => interrupted);
-            }
+        const listener: QueryCacheStateListener = () => {
+            // streamer cache entry mutated/removed -> Revalidate (force=true)
+            fetchPages(size, () => interrupted, true);
         };
 
-        cache.addListener(currentSerializedKey, listener);
+        _cache.addListener(baseKey, listener);
 
         return () => {
-            cache.removeListener(currentSerializedKey, listener);
+            _cache.removeListener(baseKey, listener);
             interrupted = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentSerializedKey]);
+    }, [serBaseKey, cache, size]);
 
     React.useEffect(() => {
-        if (size <= 0 || !currentSerializedBaseKey) {
+        if (size <= 0 || !serBaseKey) {
             if (!options.keepPreviousData) setQueries(undefined);
             return;
         }
 
         let interrupted = false;
 
-        revalidate(() => interrupted);
+        // force = false
+        fetchPages(size, () => interrupted);
 
         return () => {
             interrupted = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [size, currentSerializedBaseKey]);
+    }, [size, serBaseKey, size, options.keepPreviousData]);
 
-    async function fetchPage(page: number) {
-        const limit = page * chunkSize;
-        const refetchResult = await query.refetch({ limit, offset: limit - chunkSize, ...params } as any, { tags: options.tags, retryOnError: true });
+    const next = React.useCallback(() => {
+        if (!isFinished) setSize(size + 1);
+    }, [isFinished, size]);
+
+    async function fetchPage(page: number, forceRefetch?: boolean) {
+        const offset = page * chunkSize;
+        const refetchResult = await query.refetch({ limit: chunkSize, offset, ...(params || {}) } as any, {
+            tags: [streamerTag, id, ...(options.tags || [])],
+            retryOnError: false,
+            forceRefetch,
+        });
         return refetchResult;
     }
 
-    async function revalidate(isInterrupted: () => boolean) {
+    async function fetchPages(size: number, isInterrupted: () => boolean, forceRefetch?: boolean) {
         setIsLoading(true);
+
+        if (!(options.keepPreviousData ?? globalConfig.keepPreviousData)) setQueries(undefined);
+
         const queries: RefetchResult<R>[] = [];
-        for (let i = 1; i <= size; i++) {
-            const page = await fetchPage(i);
+
+        for (let i = 0; i < size; i++) {
+            const page = await fetchPage(i, forceRefetch);
             if (isInterrupted()) return;
             queries.push(page);
         }
@@ -134,8 +149,12 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
         }
     }
 
-    function next() {
-        if (!isFinished) setSize(size + 1);
+    function revalidate() {
+        if (params) reval(desc, params, { streamer: true });
+    }
+
+    function _setSize(size: number) {
+        setSize(Math.max(0, size));
     }
 
     return {
@@ -144,12 +163,13 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
         size: queries?.length || 0,
         isLoading,
         pages: pages as any,
-        setSize,
+        setSize: _setSize,
         isReady,
         chunkSize,
         page: page as any,
         isFinished,
         next,
-        currentLength,
+        currentSize: currentLength,
+        revalidate,
     };
 }

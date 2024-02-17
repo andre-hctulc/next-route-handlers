@@ -1,13 +1,13 @@
 import React from "react";
 import LessFetchError from "./LessFetchError";
-import { lessFetch } from "../lessFetch";
+import lessFetch from "../lessFetch";
 import { LessResponseValue, Params, Desc } from "../../types";
 
 export type UseLessMutationData<R> =
     | { data: undefined; isSuccess: false; isError: true; error: LessFetchError }
     | { data: R; isSuccess: true; isError: false; error: null };
 
-export type UseLessMutationResult<D extends {}, R = LessResponseValue<D>> = {
+export type UseLessMutationResult<D extends object, R = LessResponseValue<D>> = {
     isLoading: boolean;
     isReady: boolean;
     mutate: (params: Params<D> | FormData, requestInit?: RequestInit) => Promise<UseLessMutationData<R>>;
@@ -15,14 +15,15 @@ export type UseLessMutationResult<D extends {}, R = LessResponseValue<D>> = {
     reset: () => void;
 } & UseLessMutationData<R>;
 
-export type UseLessMutationOptions<D extends {}, R = LessResponseValue<D>> = {
+export type UseLessMutationOptions<D extends object, R = LessResponseValue<D> > = {
     requestInit?: RequestInit;
     onError?: (error: LessFetchError) => void;
     onSuccess?: (data: R) => void;
     parser?: (data: LessResponseValue<D>) => R | Promise<R>;
+    fetcher?: (params: Params<D>) => Promise<R> | R;
 };
 
-export default function useLessMutation<D extends {}, R = LessResponseValue<D>>(desc: Desc<D>, options?: UseLessMutationOptions<D, R>): UseLessMutationResult<D, R> {
+export default function useLessMutation<D extends object, R = LessResponseValue<D>>(desc: Desc<D>, options?: UseLessMutationOptions<D, R>): UseLessMutationResult<D, R> {
     const [isSuccess, setIsSuccess] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<LessFetchError | null>(null);
@@ -36,7 +37,7 @@ export default function useLessMutation<D extends {}, R = LessResponseValue<D>>(
             setData(data);
 
             if (error) options?.onError?.(error);
-            else options?.onSuccess?.(data as any);
+            else options?.onSuccess?.(data as LessResponseValue<D>);
 
             return { isSuccess: !error as any, isError: !!error as any, error: error as any, data: data as any };
         };
@@ -48,10 +49,15 @@ export default function useLessMutation<D extends {}, R = LessResponseValue<D>>(
         setIsLoading(true);
 
         try {
-            const { response: res, responseValue } = await lessFetch(desc, params, requestInit || options?.requestInit);
+            let responseValue: any;
 
-            response = res;
-            if (!response.ok) throw new Error("Response not ok");
+            if (options?.fetcher) responseValue = await options.fetcher(params as Params<D>);
+            else {
+                const { response: res, responseValue: value } = await lessFetch(desc, params, requestInit || options?.requestInit);
+                if (!res.ok) throw new Error("Response not ok");
+                response = res;
+                responseValue = value;
+            }
 
             let data: any = responseValue;
 

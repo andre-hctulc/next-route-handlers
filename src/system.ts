@@ -1,6 +1,19 @@
 import type { NextRequest } from "next/server";
-import type { ParamIn, ParamType, Desc, ParamDesc } from "../types";
-import { ParamTypeError } from "./errors";
+import type { ParamIn, ParamType, Desc, ParamDesc } from "./types";
+
+/* 
+This module is used client and server side!
+*/
+
+export function randomId(length = 12) {
+    return [...Array(length)].map(() => (~~(Math.random() * 36)).toString(36)).join("");
+}
+
+export class ParamTypeError extends TypeError {
+    constructor(paramName: string, required?: boolean) {
+        super(`Invalid type received. At parameter '${paramName}'${required ? ". Required parameter missing" : ""}`);
+    }
+}
 
 export function dateReviver(key: string, value: any) {
     if (typeof value === "string" && /^\d{4}-[01]\d-[0-3]\dT[012]\d(?::[0-6]\d){2}\.\d{3}Z$/.test(value)) {
@@ -20,6 +33,8 @@ function parseParam(paramName: string, value: any, { type, required }: ParamDesc
         return value;
     }
 
+    let num: number;
+
     switch (type) {
         case "boolean":
             if (typeof value === "boolean") return value;
@@ -27,12 +42,12 @@ function parseParam(paramName: string, value: any, { type, required }: ParamDesc
             else if (value === "true") return true;
             return Boolean(value);
         case "number":
-            const num = +value;
+            num = +value;
             if (isNaN(num)) throw new ParamTypeError(paramName);
             return num;
         case "object":
         case "any":
-            // TODO dateRevivder entfernen?
+            // TODO remove dateRevivder?
             return typeof value === "string" ? JSON.parse(value, dateReviver) : value;
         case "blob":
             if (!(value instanceof Blob)) throw new ParamTypeError(paramName);
@@ -92,7 +107,7 @@ export function requiresFormDataBody(desc: Desc<any>): boolean {
     return Object.values(desc).some(v => ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body");
 }
 
-export async function parseParams<T extends {}>(req: NextRequest, desc: Desc<T>, dynamicRequest?: DynamicRequest): Promise<T> {
+export async function parseParams<T extends object>(req: NextRequest, desc: Desc<T>, dynamicRequest?: DynamicRequest): Promise<T> {
     const result: Partial<T> = {};
     const url = new URL(req.url);
     const canHaveBody = desc.$method !== "GET" && desc.$method !== "DELETE";
@@ -118,18 +133,4 @@ export async function parseParams<T extends {}>(req: NextRequest, desc: Desc<T>,
     }
 
     return result as T;
-}
-
-/**
- * Diese function wandelt eine `Error.message` in einen validen `Response.statusText` um.
- * @param errorMessage `Error.message`
- * @returns Validen `Response.statusText`
- *  */
-export function errorMessageToDevStatusText(errorMessage: string) {
-    errorMessage = "[dev_mode '(500) - Internal Server Error'] " + errorMessage;
-    // Maximallänge hngt von browser ab. 300 sollten immer kurz genug sein.
-    const truncatedErrorMessage = errorMessage.length > 300 ? errorMessage.substring(0, 300) + "..." : errorMessage;
-    // Unerlaubte Zeichen entfernen
-    const sanitizedErrorMessage = truncatedErrorMessage.replace(/[\r\n]+/g, " ");
-    return sanitizedErrorMessage;
 }
