@@ -4,6 +4,8 @@ import type { LessQueryConfig } from "./useLessQuery";
 import QueryCache from "../QueryCache";
 import LessDev from "./LessDev";
 
+// default config
+
 export const defaultQueryConfig: LessQueryConfig = {
     freshTime: 5000,
     keepPreviousData: true,
@@ -16,6 +18,8 @@ export const defaultQueryConfig: LessQueryConfig = {
     forceRefetch: false,
     detatch: false,
 };
+
+// Context
 
 const LessContext = React.createContext<LessContext>({
     currentUser: null,
@@ -34,17 +38,19 @@ export interface LessContext<U extends { id: string } | null = null> {
     debug: boolean;
 }
 
+export function useLess<U extends { id: string } | null = null>(): LessContext<U> {
+    const ctx = React.useContext(LessContext);
+    return ctx as any;
+}
+
+// Provider
+
 interface LessProviderProps<U extends { id: string } | null = null> {
     queryConfig?: Partial<LessQueryConfig>;
     children?: React.ReactNode;
     debug?: boolean;
     user?: U;
     userRequired?: boolean;
-}
-
-export function useLess<U extends { id: string } | null = null>(): LessContext<U> {
-    const ctx = React.useContext(LessContext);
-    return ctx as any;
 }
 
 export default function LessProvider<U extends { id: string }>(props: LessProviderProps<U>) {

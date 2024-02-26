@@ -1,6 +1,6 @@
 # less
 
-Lightweight Api-Fetching Library designed for NextJS 13
+Lightweight Api-Fetching Library optimized for NextJS
 
 ## Features
 
@@ -10,15 +10,9 @@ Lightweight Api-Fetching Library designed for NextJS 13
 -   No concurrent Fetches for the same Data-Source
 -   Streamer
 
-## Usage
+## Basic Usage
 
-You can find some of the examples in the _/example_ next project:
-
-```bash
-cd example
-npm i
-npm run dev # or build and run
-```
+You can find some of the examples in the _/example_ next project
 
 **1.** Describe the Api with Api-Descriptions
 
@@ -196,10 +190,64 @@ export default function Article({ articleId, ...props }: ArticleProps) {
 }
 ```
 
+## Streamers
+
+Streamers mounted fetches to query pages (`useLessQuery().refetch`), so each query is cached on its own.
+The streamer as a whole can still be revalidated with `useMutateQuery` or `useMutateTags`
+
+Example:
+
+```tsx
+const { page: articles, pages: allArticles, setSize, error, size } = useLessStreamer(GETArticlesDesc, {}, { chunkSize: articlesPerPage });
+```
+
 ## Server API
+
+### Desc
+
+| property  | type                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------- |
+| \<param\> | `"string" \| "number" \| "object" \| "blob"    \| "stream" \| "any" \| "void" \| "boolean"` |
+| $method   | `"GET" \| "POST" \| "PUT" \|  "DELETE"`                                                     |
+| $path     | `string`                                                                                    |
+| $response | `string`                                                                                    |
+
+**LessError**
+
+Throw this inside of `withLess` to generate a error response:
+
+```ts
+if (!params.articleId) throw new LessError(404, "Bad request: 'articleId' required");
+```
+
+...
 
 ## Client API
 
-## Streamers
+### LessQueryConfig
 
-Streamers use a mounted query to fetch pages. These fetches affect the cache in the same way as mounted refetches do.
+These options are also used for streamers
+
+| property         | type                               | default value | description                                 |
+| ---------------- | ---------------------------------- | ------------- | ------------------------------------------- |
+| keepPreviousData | `boolean`                          | `false`       | Keeps the data during revalidations         |
+| freshTime        | `number`                           | `5000`        | milliseconas                                |
+| maxErrRetries    | `number`                           | `3`           |
+| errRetryTimeout  | `number`                           | `2000`        | milliseconas                                |
+| onError          | `(err: LessFetchError) => void`    | `undefined`   |
+| retryOnError     | `(err: LessFetchError) => boolean` | `undefined`   | By default retries will always be performed |
+| tags             | `(string \| Falsy)[]`              | `[]`          | Cache tags (for revalidation)               |
+| requestInit      | `RequestInit`                      | `undefined`   |
+| forceRefetch     | `boolean`                          | `false`       | Ignore fresh data and force fetch           |
+| detatch          | `boolean`                          | `false`       | Disable cache use                           |
+
+### Revalidations
+
+-   Mounted revalidations: `useLessQuery().mutate` and `useLessStreamer().revalidate`
+-   `useMutateQuery(desc, params, options)`: Mutates a query or revalidates a streamer
+-   `useMutateQueries(mutator)`: Mutates multiple queries by looking at cache states
+-   `useMutateTags(tagsFilter)`: Revalidates queries and streamers by tags
+
+All mutations/revalidations mutate/revalidate all mounted queries that match the filters
+
+...
