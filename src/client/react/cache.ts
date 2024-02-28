@@ -54,6 +54,17 @@ export function getQueryKey(desc: Desc<any>, params: object, cognitoNamespace: s
 
 // * Mutate Hooks
 
+/*
+## QueryCache
+Listeners can listen to entry changes/deletions of a key.
+A deletion with a key that has no entry still triggers listeners.
+Mutations (type `QueryCacheMutate`) can only delete cache entries that exist!
+## Streamer
+Streamers do only have cache entries of their mounted fetches.
+The streamer itself gets revalidated by listening to the (streamer) key delete in the cache, which gets triggerd 
+although the streamer key has no entry.
+*/
+
 /** Mutates a query or revalidates a streamer */
 export function useMutateQuery() {
     const { queryCache: cache, userRequired, currentUser } = useLess<any>();
@@ -93,11 +104,11 @@ export function useMutateQuery() {
     return mutate;
 }
 
-/** Mutates/revalidates multiple queries or streamers */
+/** Mutates/revalidates multiple queries */
 export function useMutateQueries() {
     const { queryCache: cache } = useLess();
 
-    function mutateQueriesCache(mutator: Extract<QueryCacheMutate, (...args: any) => void>) {
+    function mutateQueriesCache(mutator: Extract<QueryCacheMutate, (...args: any) => any>) {
         cache.mutate(mutator);
     }
 

@@ -1,13 +1,13 @@
 # less
 
-Lightweight Api-Fetching Library optimized for NextJS
+Lightweight react api fetching library mainly for NextJS
 
 ## Features
 
 -   Type safe and simple api fetching
--   (Memory) Caching
--   Dynamic revalidations and mutations (optionally by assigned tags)
--   No concurrent Fetches for the same Data-Source
+-   Client side (memory) caching
+-   Dynamic revalidations and mutations, optionally by assigned tags
+-   No concurrent fetches for the same data source
 -   Streamer
 
 ## Basic Usage
@@ -133,6 +133,8 @@ export async function DELETE(...args: any) {
 
 **3.** Query/Mutate client side
 
+Use `useLessQuery` for getting data and `useLessMutation` for posting, updating or deleting data.
+
 _app/article/module.Article.tsx_
 
 ```tsx
@@ -192,7 +194,7 @@ export default function Article({ articleId, ...props }: ArticleProps) {
 
 ## Streamers
 
-Streamers mounted fetches to query pages (`useLessQuery().refetch`), so each query is cached on its own.
+Streamers use mounted fetches to query pages (`useLessQuery().refetch`), so each query is cached on its own.
 The streamer as a whole can still be revalidated with `useMutateQuery` or `useMutateTags`
 
 Example:
@@ -212,9 +214,9 @@ const { page: articles, pages: allArticles, setSize, error, size } = useLessStre
 | $path     | `string`                                                                                    |
 | $response | `string`                                                                                    |
 
-**LessError**
+### LessError
 
-Throw this inside of `withLess` to generate a error response:
+Throw this inside of `withLess` to generate an error response:
 
 ```ts
 if (!params.articleId) throw new LessError(404, "Bad request: 'articleId' required");
@@ -226,14 +228,14 @@ if (!params.articleId) throw new LessError(404, "Bad request: 'articleId' requir
 
 ### LessQueryConfig
 
-These options are also used for streamers
+These options can be used in `useLessQuery` and `useLessStreamer`
 
 | property         | type                               | default value | description                                 |
 | ---------------- | ---------------------------------- | ------------- | ------------------------------------------- |
 | keepPreviousData | `boolean`                          | `false`       | Keeps the data during revalidations         |
-| freshTime        | `number`                           | `5000`        | milliseconas                                |
+| freshTime        | `number`                           | `5000`        | milliseconds                                |
 | maxErrRetries    | `number`                           | `3`           |
-| errRetryTimeout  | `number`                           | `2000`        | milliseconas                                |
+| errRetryTimeout  | `number`                           | `2000`        | milliseconds                                |
 | onError          | `(err: LessFetchError) => void`    | `undefined`   |
 | retryOnError     | `(err: LessFetchError) => boolean` | `undefined`   | By default retries will always be performed |
 | tags             | `(string \| Falsy)[]`              | `[]`          | Cache tags (for revalidation)               |
@@ -243,9 +245,11 @@ These options are also used for streamers
 
 ### Revalidations
 
--   Mounted revalidations: `useLessQuery().mutate` and `useLessStreamer().revalidate`
--   `useMutateQuery(desc, params, options)`: Mutates a query or revalidates a streamer
--   `useMutateQueries(mutator)`: Mutates multiple queries by looking at cache states
+Revalidation mutate the local cache and trigger revalidations
+
+-   Mounted mutations/revalidations: `useLessQuery().mutate` and `useLessStreamer().revalidate`
+-   `useMutateQuery(desc, params, options)`: Mutates/revalidates queries or revalidates streamers with the given desc and parameters
+-   `useMutateQueries(mutator)`: Mutates/revalidates multiple queries by looking at cache states
 -   `useMutateTags(tagsFilter)`: Revalidates queries and streamers by tags
 
 All mutations/revalidations mutate/revalidate all mounted queries that match the filters
