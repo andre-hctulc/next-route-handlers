@@ -1,11 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { NextRequest } from "next/server";
 
+type LessApiHandlerResponse<T extends object> = Response | LessResponseValue<T>;
+
 export type LessApiHandler<T extends object> = (req: {
     params: Params<T>;
     pathSegments: Record<string, string | string[]>;
     req: NextRequest;
-}) => Response | LessResponseValue<T> | Promise<Response | LessResponseValue<T>>;
+}) => LessApiHandlerResponse<T> | Promise<LessApiHandlerResponse<T>>;
 
 export type LessApiHandlerX<T extends object> = (
     req: {

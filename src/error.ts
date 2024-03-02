@@ -12,11 +12,7 @@ export class LessError extends Error {
      * @param statusText `Response.statusText`
      * @param errInfo _Response Body_
      */
-    constructor(
-        readonly status: number,
-        readonly statusText: string,
-        readonly errInfo?: any
-    ) {
+    constructor(readonly status: number, readonly statusText: string, readonly errInfo?: BodyInit) {
         super(statusText || "");
     }
 

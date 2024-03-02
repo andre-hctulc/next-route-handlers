@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { setHeader } from "./system";
 
-/** Extends the NextResponse with some helper functions. (NextJS >= 13) */
+/** Extends the NextResponse with some helper functions. */
 export default class LessResponse extends NextResponse {
     /**
-     * Sends an empty response with the given status and status message.
+     * Sends a response with the give status
      * @param status
-     * @param statusText Status message. **Darf nicht alle chars enthalten** ('\n' ist bspw. verboten).
+     * @param statusText Status message
      * @param init `ResponseInit`
      * */
-    static sendStatus(status: number, statusText: string, init?: ResponseInit & { body?: string }) {
+    static sendStatus(status: number, statusText: string, init?: ResponseInit & { body?: BodyInit }) {
         return new LessResponse(init?.body, {
             status: status,
             statusText: statusText,

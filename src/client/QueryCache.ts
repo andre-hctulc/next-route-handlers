@@ -1,7 +1,7 @@
 import hash from "stable-hash";
 
 /*
-Independent from less types/api
+Independent Memory Cache
 */
 
 /**
@@ -9,10 +9,6 @@ Independent from less types/api
  * */
 export type QueryState = {
     isRevalidating: Promise<any> | null;
-    /**
-     * Daten in ein Objekt setzen, um _undefined_ als Wert identifizieren zu können
-     * Sollten erst nach dem Laden von Daten aktualisert werden. Nicht schon während des Ladens, um `keepPreviousValue` zu realisieren!
-     * */
     data: { d: any } | null | undefined;
     error: Error | null;
     /** Zeitstempel des Zeitpunktes, in dem `data` das letzte mal im Status gesetzt wurden */
@@ -119,16 +115,15 @@ export default class QueryCache {
             ...currentState,
         };
 
-        // * Tags
-        // TODO Hier sind evtl noch tags von ounmounted queries enthalten!
+        // Set tags
+        if (!state.tags) state.tags = new Set();
         state.tags?.forEach(t => newState.tags.add(t));
 
-        // * Daten setzen (Wenn nicht undefined)
-
+        // Set data
         if (state.data !== undefined) {
             newState.data = state.data;
 
-            // Timestamp aktualisieren
+            // update timestamp
             if (state.data === null) newState.timestamp = undefined;
             else {
                 const now = new Date().getTime();
@@ -136,18 +131,19 @@ export default class QueryCache {
             }
         }
 
-        // * isRevalidating
+        // Set revalidating
         if (state.isRevalidating !== undefined) newState.isRevalidating = state.isRevalidating;
 
-        // * Error
+        // Error
         if (state.error !== undefined) newState.error = state.error;
 
-        // * In Cache setzen + Listener benachrichtigen
+        // Set state
         this.#cache.set(k, newState);
+        // notify listeners
         this.notifyListeners(k, newState);
     }
 
-    /** Ändert Einträge aus dem Cache und benachrichtigt Listeners */
+    /** Mutates entries and notifies listeners */
     mutate(mutator: QueryCacheMutate) {
         if (typeof mutator === "function") {
             for (const k of this.#cache.keys()) {
@@ -160,12 +156,11 @@ export default class QueryCache {
         }
     }
 
-    /** Entfernt Einträge aus dem Cache und benachrichtigt Listeners */
+    /** Removes entries and notifies listeners */
     remove(del: QueryCacheDelete) {
         if (typeof del === "function") {
-            // Keys vorher bestimmen, da in dem Loop Einträge entfernt werden
+            // Get keys now as the entries could change during the loop
             const keys = Array.from(this.#cache.keys());
-            // const tags = Array.from(this.#cache.values()).map(state => Array.from(state.tags));
 
             for (const k of keys) {
                 const state = this.#cache.get(k)!;

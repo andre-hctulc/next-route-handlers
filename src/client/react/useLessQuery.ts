@@ -216,7 +216,7 @@ interface MountedFetchOptions<D extends object, R> {
 }
 
 /**
- * Berücksichtigt den Cache, falls angegeben
+ * Respects cache, if given
  */
 async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
     desc: Desc<D>,
@@ -300,7 +300,8 @@ async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
 
         if (key) {
             /** Retry prevented by options? */
-            const retryPrevented = isParseError || config.retryOnError === false || (config.retryOnError !== true && config.retryOnError?.(fetchErr) === false);
+            const retryPrevented =
+                isParseError || config.retryOnError === false || (config.retryOnError !== true && config.retryOnError?.(fetchErr) === false);
 
             if (!retryPrevented && errRetryCount < config.maxErrRetries) {
                 // set `isRevalidating=null`

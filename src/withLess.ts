@@ -5,6 +5,8 @@ import LessResponse from "./LessResponse";
 import { LessError } from "./error";
 
 /**
+ * Do this only in dev mode!!
+ *
  * `Error.message` -> valid `Response.statusText`.
  *
  * The status may not contain certain cahracters and my have a maximum length.
@@ -13,11 +15,11 @@ import { LessError } from "./error";
  * @param errorMessage `Error.message`
  * @returns Validen `Response.statusText`
  *  */
-export function errorMessageToDevStatusText(errorMessage: string) {
+function errorMessageToDevStatusText(errorMessage: string) {
     errorMessage = "[dev_mode '(500) - Internal Server Error'] " + errorMessage;
-    // Maximallänge hngt von browser ab. 300 sollten immer kurz genug sein.
+    // Max length depends on browser. 300 should be safe
     const truncatedErrorMessage = errorMessage.length > 300 ? errorMessage.substring(0, 300) + "..." : errorMessage;
-    // Unerlaubte Zeichen entfernen
+    // Remove unallowed characters
     const sanitizedErrorMessage = truncatedErrorMessage.replace(/[\r\n]+/g, " ");
     return sanitizedErrorMessage;
 }
@@ -45,10 +47,10 @@ export default async function withLess<T extends object = object>(
         console.error(`\n${desc?.$method.toUpperCase()} - ${desc?.$path}\n`, err);
 
         if (err instanceof LessError) {
-            // Error.message valider Response.statusText vorrausgesetzt
+            // valid Error.message as statusMessage expected expected
             return LessResponse.sendStatus(err.status, err.statusText, { body: JSON.stringify(err.body || "") });
         } else {
-            // Error.message nach Response.statusText umwandeln
+            // Error.message -> Response.statusText
             return LessResponse.sendStatus(500, devMode ? errorMessageToDevStatusText((err as Error).message) : "Internal Server Error", {
                 body: devMode ? (err as Error).stack : undefined,
             });
