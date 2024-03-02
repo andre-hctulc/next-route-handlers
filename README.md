@@ -20,9 +20,11 @@ _src/api-desc.ts_
 
 ```ts
 import type { Desc } from "@less/src";
-import type { GETArticle, PUTArticle, POSTArticle, DELETEArticle } from "app/api/article/route";
-import type { GETArticles } from "app/api/articles/route";
-import type { GETArticlesCount } from "app/api/articles/count/route";
+
+interface GETArticle {
+    articleId: string;
+    $response: Article;
+}
 
 export const GETArticleDesc: Desc<GETArticle> = {
     articleId: { type: "string", in: "query", required: true },
@@ -30,6 +32,13 @@ export const GETArticleDesc: Desc<GETArticle> = {
     $method: "GET",
     $path: "/api/article",
 };
+
+interface PUTArticle {
+    articleId: string;
+    content?: string;
+    title?: string;
+    $response: Article;
+}
 
 export const PUTArticleDesc: Desc<PUTArticle> = {
     articleId: { type: "string", in: "body", required: true },
@@ -40,6 +49,11 @@ export const PUTArticleDesc: Desc<PUTArticle> = {
     $path: "/api/article",
 };
 
+interface POSTArticle {
+    article: Omit<Article, "id">;
+    $response: string;
+}
+
 export const POSTArticleDesc: Desc<POSTArticle> = {
     article: { type: "object", in: "body", required: true },
     $response: "string",
@@ -47,25 +61,16 @@ export const POSTArticleDesc: Desc<POSTArticle> = {
     $path: "/api/article",
 };
 
+interface DELETEArticle {
+    articleId: string;
+    $response: void;
+}
+
 export const DELETEArticleDesc: Desc<DELETEArticle> = {
     articleId: { type: "string", in: "query", required: true },
     $response: "void",
     $method: "DELETE",
     $path: "/api/article",
-};
-
-export const GETArticlesDesc: Desc<GETArticles> = {
-    offset: { type: "number", in: "query" },
-    limit: { type: "number", in: "query" },
-    $response: "object",
-    $method: "GET",
-    $path: "/api/articles",
-};
-
-export const GETArticlesCountDesc: Desc<GETArticlesCount> = {
-    $response: "number",
-    $method: "GET",
-    $path: "/api/articles/count",
 };
 ```
 
@@ -79,23 +84,11 @@ import { GETArticleDesc, PUTArticleDesc, POSTArticleDesc, DELETEArticleDesc } fr
 import { Article } from "src/types";
 import { getArticle, updateArticle, createArticle, deleteArticle } from "src/acrticles";
 
-export interface GETArticle {
-    articleId: string;
-    $response: Article;
-}
-
 export async function GET(...args: any) {
     return await withLess(args, GETArticleDesc, async ({ params }) => {
         const article = await getArticle(params.articleId);
         return article;
     });
-}
-
-export interface PUTArticle {
-    articleId: string;
-    content?: string;
-    title?: string;
-    $response: Article;
 }
 
 export async function PUT(...args: any) {
@@ -106,21 +99,11 @@ export async function PUT(...args: any) {
     });
 }
 
-export interface POSTArticle {
-    article: Omit<Article, "id">;
-    $response: string;
-}
-
 export async function POST(...args: any) {
     return await withLess(args, POSTArticleDesc, async ({ params }) => {
         const articleId = await createArticle(params.article);
         return articleId;
     });
-}
-
-export interface DELETEArticle {
-    articleId: string;
-    $response: void;
 }
 
 export async function DELETE(...args: any) {
