@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import type { ParamIn, ParamType, Desc, ParamDesc } from "./types";
+import type { ParamIn, ParamType, RHDesc, ParamDesc } from "./types";
+import type { headers } from "next/headers";
 
 /* 
 This module is used client and server side!
@@ -9,7 +10,7 @@ export function randomId(length = 12) {
     return [...Array(length)].map(() => (~~(Math.random() * 36)).toString(36)).join("");
 }
 
-export class ParamTypeError extends TypeError {
+class ParamTypeError extends TypeError {
     constructor(paramName: string, required?: boolean) {
         super(`Invalid type received. At parameter '${paramName}'${required ? ". Required parameter missing" : ""}`);
     }
@@ -24,8 +25,6 @@ export function dateReviver(key: string, value: any) {
     // If a date was not returned, return the value that was passed in.
     return value;
 }
-
-export type DynamicRequest = { headers?: Headers };
 
 function parseParam(paramName: string, value: any, { type, required }: ParamDesc<any>) {
     if (value === undefined) {
@@ -64,7 +63,7 @@ function parseParam(paramName: string, value: any, { type, required }: ParamDesc
     }
 }
 
-function getParam(paramName: string, reqBody: any, url: URL, paramDef: { type: ParamType; in: ParamIn }, dynamicRequest?: DynamicRequest) {
+function getParam(paramName: string, reqBody: any, url: URL, paramDef: { type: ParamType; in: ParamIn }, headersList: ReturnType<typeof headers>) {
     let rawValue: any;
 
     switch (paramDef.in) {
@@ -75,8 +74,7 @@ function getParam(paramName: string, reqBody: any, url: URL, paramDef: { type: P
             rawValue = url.searchParams.get(paramName) || undefined;
             break;
         case "header":
-            if (!dynamicRequest?.headers) throw new Error("Dynamic request incomplete or missing - `headers` required");
-            rawValue = dynamicRequest.headers.get(paramName) || undefined;
+            rawValue = headersList.get(paramName) || undefined;
             break;
         default:
             rawValue = undefined;
@@ -92,22 +90,26 @@ export function setHeader(headers: HeadersInit, headerName: string, value: strin
     else headers[headerName] = value;
 }
 
-export function formDataToObject(formData: FormData, desc: Desc<any>): Record<string, any> {
+export function formDataToObject(formData: FormData, desc: RHDesc<any>): Record<string, any> {
     const result: Record<string, any> = {};
     for (const paramName in desc) {
         if (paramName.startsWith("$")) continue;
         const param = desc[paramName];
         if (formData.has(paramName))
-            result[paramName] = parseParam(paramName, param.type === "blob-array" ? formData.getAll(paramName) : formData.get(paramName), desc[paramName]);
+            result[paramName] = parseParam(
+                paramName,
+                param.type === "blob-array" ? formData.getAll(paramName) : formData.get(paramName),
+                desc[paramName]
+            );
     }
     return result;
 }
 
-export function requiresFormDataBody(desc: Desc<any>): boolean {
+export function requiresFormDataBody(desc: RHDesc<any>): boolean {
     return Object.values(desc).some(v => ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body");
 }
 
-export async function parseParams<T extends object>(req: NextRequest, desc: Desc<T>, dynamicRequest?: DynamicRequest): Promise<T> {
+export async function parseParams<T extends object>(req: NextRequest, desc: RHDesc<T>, headersList: ReturnType<typeof headers>): Promise<T> {
     const result: Partial<T> = {};
     const url = new URL(req.url);
     const canHaveBody = desc.$method !== "GET" && desc.$method !== "DELETE";
@@ -129,7 +131,7 @@ export async function parseParams<T extends object>(req: NextRequest, desc: Desc
 
     for (const paramName in desc) {
         if (paramName.startsWith("$")) continue;
-        result[paramName as keyof T] = getParam(paramName, body, url, desc[paramName as keyof T], dynamicRequest);
+        result[paramName as keyof T] = getParam(paramName, body, url, desc[paramName as keyof T], headersList);
     }
 
     return result as T;

@@ -1,8 +1,5 @@
-export default class LessFetchError extends Error {
-    constructor(
-        readonly reason: Error,
-        readonly response: Response | null
-    ) {
+export default class RHFetchError extends Error {
+    constructor(readonly reason: Error, readonly response: Response | null) {
         super(`LessFetchError${response ? ` (${response.status}) "${response.statusText}"` : ` - Reason: ${reason.message}`}`);
     }
 
@@ -22,7 +19,7 @@ export default class LessFetchError extends Error {
         }
     }
 
-    static is(err: unknown, status?: number): err is LessFetchError {
-        return err instanceof LessFetchError && (!status || status === err.response?.status);
+    static is(err: unknown, status?: number): err is RHFetchError {
+        return err instanceof RHFetchError && (!status || status === err.response?.status);
     }
 }

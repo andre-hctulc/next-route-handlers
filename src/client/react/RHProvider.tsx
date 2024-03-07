@@ -1,12 +1,12 @@
 import React from "react";
 import { mergeConfigs } from "../client-util";
-import type { LessQueryConfig } from "./useLessQuery";
+import type { RHQueryConfig } from "./useRHQuery";
 import QueryCache from "../QueryCache";
-import LessDev from "./LessDev";
+import RHDev from "./RHDev";
 
 // default config
 
-export const defaultQueryConfig: LessQueryConfig = {
+export const defaultQueryConfig: RHQueryConfig = {
     freshTime: 5000,
     keepPreviousData: true,
     maxErrRetries: 3,
@@ -21,59 +21,51 @@ export const defaultQueryConfig: LessQueryConfig = {
 
 // Context
 
-const LessContext = React.createContext<LessContext>({
-    currentUser: null,
-    userRequired: false,
+const RHContext = React.createContext<RHContext>({
     queryCache: new QueryCache(),
     queryConfig: defaultQueryConfig,
     debug: false,
 });
 
-export interface LessContext<U extends { id: string } | null = null> {
-    currentUser: U | null;
-    userRequired: boolean;
+export interface RHContext {
     queryCache: QueryCache;
     /** Merges with the parent's `LessProvider`'s query config  */
-    queryConfig: LessQueryConfig;
+    queryConfig: RHQueryConfig;
     debug: boolean;
 }
 
-export function useLess<U extends { id: string } | null = null>(): LessContext<U> {
-    const ctx = React.useContext(LessContext);
+export function useRHContext(): RHContext {
+    const ctx = React.useContext(RHContext);
     return ctx as any;
 }
 
 // Provider
 
-interface LessProviderProps<U extends { id: string } | null = null> {
-    queryConfig?: Partial<LessQueryConfig>;
+interface RHProviderProps<U extends { id: string } | null = null> {
+    queryConfig?: Partial<RHQueryConfig>;
     children?: React.ReactNode;
     debug?: boolean;
     user?: U;
     userRequired?: boolean;
 }
 
-export default function LessProvider<U extends { id: string }>(props: LessProviderProps<U>) {
-    const ctx = useLess();
+export default function RHProvider<U extends { id: string }>(props: RHProviderProps<U>) {
+    const ctx = useRHContext();
     const queryCache = React.useMemo(() => ctx?.queryCache || new QueryCache(), [ctx?.queryCache]);
     const queryConfig = React.useMemo(() => {
         return mergeConfigs(props.queryConfig || {}, ctx?.queryConfig || defaultQueryConfig);
     }, [ctx?.queryConfig, props.queryConfig]);
 
-    if (props.userRequired && !props.user) throw new Error("User required");
-
     return (
-        <LessContext.Provider
+        <RHContext.Provider
             value={{
                 debug: !!props.debug,
                 queryCache: queryCache,
                 queryConfig: queryConfig,
-                currentUser: (props.user as any) || null,
-                userRequired: !!props.userRequired,
             }}
         >
-            {props.debug !== false && <LessDev />}
+            {props.debug !== false && <RHDev />}
             {props.children}
-        </LessContext.Provider>
+        </RHContext.Provider>
     );
 }

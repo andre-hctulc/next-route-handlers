@@ -1,43 +1,43 @@
 import React from "react";
-import LessFetchError from "./LessFetchError";
-import lessFetch from "../lessFetch";
-import { LessResponseValue, Params, Desc } from "../../types";
+import RHFetchError from "./RHFetchError";
+import rhFetch from "../rhFetch";
+import { ResponseValue, Params, RHDesc } from "../../types";
 
-export type UseLessMutationData<R> =
-    | { data: undefined; isSuccess: false; isError: true; error: LessFetchError }
+type MutationResult<R> =
+    | { data: undefined; isSuccess: false; isError: true; error: RHFetchError }
     | { data: R; isSuccess: true; isError: false; error: null };
 
-export type UseLessMutationResult<D extends object, R = LessResponseValue<D>> = {
+export type Mutation<D extends object, R = ResponseValue<D>> = {
     isLoading: boolean;
     isReady: boolean;
-    mutate: (params: Params<D> | FormData, requestInit?: RequestInit) => Promise<UseLessMutationData<R>>;
+    mutate: (params: Params<D> | FormData, requestInit?: RequestInit) => Promise<MutationResult<R>>;
     /** Resets the current status */
     reset: () => void;
-} & UseLessMutationData<R>;
+} & MutationResult<R>;
 
-export type UseLessMutationOptions<D extends object, R = LessResponseValue<D> > = {
+export type MutationOptions<D extends object, R = ResponseValue<D>> = {
     requestInit?: RequestInit;
-    onError?: (error: LessFetchError) => void;
+    onError?: (error: RHFetchError) => void;
     onSuccess?: (data: R) => void;
-    parser?: (data: LessResponseValue<D>) => R | Promise<R>;
+    parser?: (data: ResponseValue<D>) => R | Promise<R>;
     fetcher?: (params: Params<D>) => Promise<R> | R;
 };
 
-export default function useLessMutation<D extends object, R = LessResponseValue<D>>(desc: Desc<D>, options?: UseLessMutationOptions<D, R>): UseLessMutationResult<D, R> {
+export default function useRHMutation<D extends object, R = ResponseValue<D>>(desc: RHDesc<D>, options?: MutationOptions<D, R>): Mutation<D, R> {
     const [isSuccess, setIsSuccess] = React.useState(false);
     const [isLoading, setIsLoading] = React.useState(false);
-    const [error, setError] = React.useState<LessFetchError | null>(null);
-    const [data, setData] = React.useState<LessResponseValue<D>>();
+    const [error, setError] = React.useState<RHFetchError | null>(null);
+    const [data, setData] = React.useState<ResponseValue<D>>();
 
-    async function mutate(params: Params<D> | FormData, requestInit?: RequestInit): Promise<UseLessMutationData<LessResponseValue<D>>> {
-        const resolve = (error: LessFetchError | null, data: LessResponseValue<D> | undefined) => {
+    async function mutate(params: Params<D> | FormData, requestInit?: RequestInit): Promise<MutationResult<ResponseValue<D>>> {
+        const resolve = (error: RHFetchError | null, data: ResponseValue<D> | undefined) => {
             setIsLoading(false);
             setIsSuccess(!error);
             setError(error);
             setData(data);
 
             if (error) options?.onError?.(error);
-            else options?.onSuccess?.(data as LessResponseValue<D>);
+            else options?.onSuccess?.(data as ResponseValue<D>);
 
             return { isSuccess: !error as any, isError: !!error as any, error: error as any, data: data as any };
         };
@@ -53,7 +53,7 @@ export default function useLessMutation<D extends object, R = LessResponseValue<
 
             if (options?.fetcher) responseValue = await options.fetcher(params as Params<D>);
             else {
-                const { response: res, responseValue: value } = await lessFetch(desc, params, requestInit || options?.requestInit);
+                const { response: res, responseValue: value } = await rhFetch(desc, params, requestInit || options?.requestInit);
                 if (!res.ok) throw new Error("Response not ok");
                 response = res;
                 responseValue = value;
@@ -69,7 +69,7 @@ export default function useLessMutation<D extends object, R = LessResponseValue<
 
             return resolve(null, data);
         } catch (err) {
-            const lessError = new LessFetchError(err as Error, response);
+            const lessError = new RHFetchError(err as Error, response);
             return resolve(lessError, undefined);
         }
     }

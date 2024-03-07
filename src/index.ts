@@ -1,7 +1,7 @@
-export * from "./error";
-export * from "./types";
+export { default as RHError } from "./RHError";
+export { type RHDesc } from "./types";
 
-import withLess from "./withLess";
-export { default as LessResponse } from "./LessResponse";
+import rh from "./rh";
+export { default as RHResponse } from "./RHResponse";
 
-export default withLess;
+export default rh;

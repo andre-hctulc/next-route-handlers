@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { setHeader } from "./system";
 
 /** Extends the NextResponse with some helper functions. */
-export default class LessResponse extends NextResponse {
+export default class RHResponse extends NextResponse {
     /**
      * Sends a response with the give status
      * @param status
@@ -10,7 +10,7 @@ export default class LessResponse extends NextResponse {
      * @param init `ResponseInit`
      * */
     static sendStatus(status: number, statusText: string, init?: ResponseInit & { body?: BodyInit }) {
-        return new LessResponse(init?.body, {
+        return new RHResponse(init?.body, {
             status: status,
             statusText: statusText,
             ...init,
@@ -24,9 +24,9 @@ export default class LessResponse extends NextResponse {
      * */
     static send(value: any, init?: ResponseInit) {
         if (value === null || value === undefined) return new Response(undefined, { status: 200, ...init });
-        else if (value instanceof ReadableStream) return LessResponse.stream(value, init);
-        else if (Buffer.isBuffer(value)) return LessResponse.blob(value, init);
-        else return LessResponse.json(value, { status: 200, ...init });
+        else if (value instanceof ReadableStream) return RHResponse.stream(value, init);
+        else if (Buffer.isBuffer(value)) return RHResponse.blob(value, init);
+        else return RHResponse.json(value, { status: 200, ...init });
     }
 
     /**

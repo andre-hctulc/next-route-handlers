@@ -1,5 +1,5 @@
-import { useLess } from "./LessProvider";
-import type { Desc, Params, LessResponseValue } from "../../types";
+import { useRHContext } from "./RHProvider";
+import type { RHDesc, Params, ResponseValue } from "../../types";
 import type { QueryCacheMutate, QueryState } from "../QueryCache";
 
 // * Tags
@@ -24,7 +24,8 @@ function stateIncludesTags(state: QueryState, tagsFilter: QueryTagFilter) {
     else {
         if (!tagsFilter.andOr && !tagsFilter.not) return false;
         return (
-            (!tagsFilter.andOr || stateIncludesTagsAndOr(state, tagsFilter.andOr)) && (!tagsFilter.not || !tagsFilter.not.some(excludeTag => state.tags.has(excludeTag)))
+            (!tagsFilter.andOr || stateIncludesTagsAndOr(state, tagsFilter.andOr)) &&
+            (!tagsFilter.not || !tagsFilter.not.some(excludeTag => state.tags.has(excludeTag)))
         );
     }
 }
@@ -36,17 +37,15 @@ export type LessQueryKey = {
     desc: string;
     params: object;
     streamer: boolean | undefined;
-    cognito: string | undefined;
 };
 
 export type QueryKeyFilter = string[] | ((key: any) => boolean);
-export type DataMutation<T> = T | ((previousData: T | undefined) => Promise<T> | T) | Promise<T>;
+export type CacheDataMutation<T> = T | ((previousData: T | undefined) => Promise<T> | T) | Promise<T>;
 
-export function getQueryKey(desc: Desc<any>, params: object, cognitoNamespace: string | undefined, unique?: { streamer?: boolean }): LessQueryKey {
+export function getQueryKey(desc: RHDesc<any>, params: object, unique?: { streamer?: boolean }): LessQueryKey {
     return {
         desc: `${desc.$method}:${desc.$path}`,
         params: params,
-        cognito: cognitoNamespace || undefined,
         // Streamer
         streamer: unique?.streamer || undefined,
     };
@@ -65,23 +64,34 @@ The streamer itself gets revalidated by listening to the (streamer) key delete i
 although the streamer key has no entry.
 */
 
-/** Mutates a query or revalidates a streamer */
-export function useMutateQuery() {
-    const { queryCache: cache, userRequired, currentUser } = useLess<any>();
-
-    async function mutate<D extends object, R = LessResponseValue<D>>(
-        desc: Desc<D>,
+export interface Cache {
+    mutateQuery: <D extends object, R = ResponseValue<D>>(
+        desc: RHDesc<D>,
         params: Params<D>,
-        options?: { streamer?: boolean; newData?: DataMutation<R> }
+        options?: { newData?: CacheDataMutation<R> }
+    ) => Promise<{ error: Error | null; newData: undefined | R }>;
+    revalidateStreamer: <D extends object>(desc: RHDesc<D>, params: Params<D>) => void;
+    revalidateTags: (tagsFilter: QueryTagFilter) => void;
+    mutateQueries: (mutator: Extract<QueryCacheMutate, (...args: any) => any>) => void;
+}
+
+// This hook is also used in mounted mutations in useRHQuery and useRHStreamer
+/** Mutates a query or revalidates a streamer */
+export default function useRHCache(): Cache {
+    const { queryCache: cache } = useRHContext();
+
+    async function mutateQuery<D extends object, R = ResponseValue<D>>(
+        desc: RHDesc<D>,
+        params: Params<D>,
+        options?: { newData?: CacheDataMutation<R> }
     ): Promise<{ error: Error | null; newData: undefined | R }> {
         const newData = options?.newData;
-        const isStreamer = !!options?.streamer;
 
-        const p = isStreamer ? { ...params, offset: undefined, limit: undefined } : params;
-        const key = getQueryKey(desc, p, userRequired ? currentUser?.id || "" : undefined, { streamer: isStreamer });
+        const p = { ...params, offset: undefined, limit: undefined };
+        const key = getQueryKey(desc, p);
         const state = cache.get(key);
 
-        if (isStreamer || newData === undefined) {
+        if (newData === undefined) {
             cache.delete(key);
             return { newData: undefined, error: null };
         }
@@ -101,27 +111,19 @@ export function useMutateQuery() {
         }
     }
 
-    return mutate;
-}
-
-/** Mutates/revalidates multiple queries */
-export function useMutateQueries() {
-    const { queryCache: cache } = useLess();
-
-    function mutateQueriesCache(mutator: Extract<QueryCacheMutate, (...args: any) => any>) {
-        cache.mutate(mutator);
+    async function revalidateStreamer<D extends object>(desc: RHDesc<D>, params: Params<D>): Promise<void> {
+        const p = { ...params, offset: undefined, limit: undefined };
+        const key = getQueryKey(desc, p, { streamer: true });
+        cache.delete(key);
     }
 
-    return mutateQueriesCache;
-}
-
-/** Revalidates queries and streamers by tags */
-export function useMutateTags() {
-    const { queryCache: cache } = useLess();
+    function mutateQueries(mutator: Extract<QueryCacheMutate, (...args: any) => any>) {
+        cache.mutate(mutator);
+    }
 
     function revalidateTags(tagsFilter: QueryTagFilter) {
         cache.remove(state => stateIncludesTags(state, tagsFilter));
     }
 
-    return revalidateTags;
+    return { mutateQuery, revalidateStreamer, revalidateTags, mutateQueries };
 }

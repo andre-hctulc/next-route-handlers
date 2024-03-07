@@ -1,15 +1,15 @@
 import React from "react";
-import lessFetch from "../lessFetch";
-import { useLess } from "./LessProvider";
-import { DataMutation, LessQueryKey, getQueryKey, useMutateQuery } from "./cache";
-import { Desc, Params, LessResponseValue } from "../../types";
+import rhFetch from "../rhFetch";
+import { useRHContext } from "./RHProvider";
+import useRHCache, { CacheDataMutation, LessQueryKey, getQueryKey } from "./useRHCache";
+import { RHDesc, Params, ResponseValue } from "../../types";
 import { Falsy, mergeConfigs } from "../client-util";
 import QueryCache, { QueryCacheStateListener, QueryState } from "../QueryCache";
-import LessFetchError from "./LessFetchError";
+import RHFetchError from "./RHFetchError";
 
 // * Config
 
-export interface LessQueryConfig {
+export interface RHQueryConfig {
     /**
      * Data will be kept while revalidating and if data is present
      * @default true
@@ -22,9 +22,9 @@ export interface LessQueryConfig {
     /** @default 2000 */
     errRetryTimeout: number;
     /** @default undefined */
-    onError: ((err: LessFetchError) => void) | undefined;
+    onError: ((err: RHFetchError) => void) | undefined;
     /** @default true */
-    retryOnError: ((err: LessFetchError) => boolean) | boolean;
+    retryOnError: ((err: RHFetchError) => boolean) | boolean;
     /** @default [] */
     tags: (string | Falsy)[];
     /** @default {} */
@@ -48,7 +48,7 @@ export type RefetchResult<R> =
       }
     | {
           isError: true;
-          error: LessFetchError;
+          error: RHFetchError;
           isSuccess: false;
           data: undefined;
           response: Response | null;
@@ -56,18 +56,18 @@ export type RefetchResult<R> =
 
 // * Hook
 
-export type LessQueryResult<D extends object, R> = {
+export type Query<D extends object, R> = {
     /** Mounted refetch */
-    refetch: (params: Params<D>, queryConfig?: Partial<LessQueryConfig>) => Promise<RefetchResult<R>>;
+    refetch: (params: Params<D>, queryConfig?: Partial<RHQueryConfig>) => Promise<RefetchResult<R>>;
     /** Revalidating? (Revalidating **and** _keepPreviousData=false_) */
     isLoading: boolean;
     isReady: boolean;
     enabled: boolean;
     /** Mounted mutate */
-    mutate: (newData?: DataMutation<R>) => Promise<{ error: Error | null; newData: undefined | R }>;
+    mutate: (newData?: CacheDataMutation<R>) => Promise<{ error: Error | null; newData: undefined | R }>;
 } & RefetchResult<R>;
 
-export type UseFetchOptions<D extends object, R = LessResponseValue<D>> = {
+export type QueryOptions<D extends object, R = ResponseValue<D>> = {
     enabled?: boolean;
     /** Debugging */
     id?: string;
@@ -79,8 +79,8 @@ export type UseFetchOptions<D extends object, R = LessResponseValue<D>> = {
     delay?: number;
     /** This fetcher is also used in error retries. To prevent retries on certain errors use the  */
     fetcher?: (params: Params<D>) => R | Promise<R>;
-    parser?: (data: LessResponseValue<D>) => R | Promise<R>;
-} & Partial<LessQueryConfig>;
+    parser?: (data: ResponseValue<D>) => R | Promise<R>;
+} & Partial<RHQueryConfig>;
 
 /**
  * Type params:
@@ -93,16 +93,14 @@ export type UseFetchOptions<D extends object, R = LessResponseValue<D>> = {
  * @param params Paramaters
  * @param options Fetch options
  */
-export default function useLessQuery<D extends object, R = LessResponseValue<D>>(
-    desc: Desc<D>,
+export default function useRHQuery<D extends object, R = ResponseValue<D>>(
+    desc: RHDesc<D>,
     params: Params<D> | Falsy,
-    options?: UseFetchOptions<D, R>
-): LessQueryResult<D, R> {
-    const lessContext = useLess<any>();
-    const { queryCache: cache, queryConfig: globalConfig } = useLess();
+    options?: QueryOptions<D, R>
+): Query<D, R> {
+    const { queryCache: cache, queryConfig: globalConfig } = useRHContext();
     const [delayed, setDelayed] = React.useState(!!options?.delay);
-    const cognito = lessContext.userRequired ? lessContext.currentUser?.id || "" : undefined;
-    const key = params && options?.enabled !== false ? getQueryKey(desc, params, cognito) : false;
+    const key = params && options?.enabled !== false ? getQueryKey(desc, params) : false;
     const serializedKey = key && QueryCache.serializeKey(key);
     const enabled = options?.enabled !== false && !!params;
     const [state, setState] = React.useState<QueryState | null>(serializedKey ? cache.get(serializedKey) || null : null);
@@ -115,7 +113,7 @@ export default function useLessQuery<D extends object, R = LessResponseValue<D>>
     }, [state, keepPreviousData, serializedKey]);
     const error = state?.error;
     const isSuccess = !!state?.data && !error;
-    const mut = useMutateQuery();
+    const { mutateQuery } = useRHCache();
 
     // Delay Effect
     React.useEffect(() => {
@@ -165,29 +163,29 @@ export default function useLessQuery<D extends object, R = LessResponseValue<D>>
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [serializedKey, delayed, cache]);
 
-    async function refetch(params: Params<D>, refetchOptions?: Partial<LessQueryConfig>, errRetryCount = 0): Promise<RefetchResult<R>> {
+    async function refetch(params: Params<D>, refetchOptions?: Partial<RHQueryConfig>, errRetryCount = 0): Promise<RefetchResult<R>> {
         const conf = mergeConfigs(refetchOptions || {}, mergeConfigs(options || {}, globalConfig));
 
         try {
             const { data, response } = await mountedLessFetch(
                 desc,
                 params,
-                { config: conf, cache, fetcher: options?.fetcher, parser: options?.parser, cognito },
+                { config: conf, cache, fetcher: options?.fetcher, parser: options?.parser },
                 errRetryCount
             );
             return { data, isSuccess: true, isError: false, response, error: null };
         } catch (err) {
-            return { isError: true, isSuccess: false, data: undefined, response: null, error: err as LessFetchError };
+            return { isError: true, isSuccess: false, data: undefined, response: null, error: err as RHFetchError };
         }
     }
 
-    async function _refetch(params: Params<D>, refetchOptions?: Partial<LessQueryConfig>) {
+    async function _refetch(params: Params<D>, refetchOptions?: Partial<RHQueryConfig>) {
         return await refetch(params, refetchOptions);
     }
 
-    async function mutate(newData?: DataMutation<R>): Promise<{ error: Error | null; newData: undefined | R }> {
+    async function mutate(newData?: CacheDataMutation<R>): Promise<{ error: Error | null; newData: undefined | R }> {
         if (!params) return { error: new Error("Query disabled"), newData: undefined };
-        return mut(desc, params, { newData });
+        return mutateQuery(desc, params, { newData });
     }
 
     return {
@@ -209,17 +207,17 @@ export default function useLessQuery<D extends object, R = LessResponseValue<D>>
 interface MountedFetchOptions<D extends object, R> {
     cognito?: string;
     /** This fetcher is also used in error retries. To prevent retries on certain errors use `LessQueryConfig.retryOnError`  */
-    fetcher?: UseFetchOptions<D, R>["fetcher"];
-    parser?: UseFetchOptions<D, R>["parser"];
+    fetcher?: QueryOptions<D, R>["fetcher"];
+    parser?: QueryOptions<D, R>["parser"];
     cache: QueryCache;
-    config: LessQueryConfig;
+    config: RHQueryConfig;
 }
 
 /**
  * Respects cache, if given
  */
-async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
-    desc: Desc<D>,
+async function mountedLessFetch<D extends object, R = ResponseValue<D>>(
+    desc: RHDesc<D>,
     params: Params<D>,
     fetchOptions: MountedFetchOptions<D, R>,
     errRetryCount = 0
@@ -233,7 +231,7 @@ async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
     try {
         if (!params) throw new Error("No params received");
 
-        key = getQueryKey(desc, params, fetchOptions?.cognito);
+        key = getQueryKey(desc, params);
         if (!key) throw new Error("No query key received");
 
         let data: any;
@@ -262,7 +260,7 @@ async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
                         if (fetchOptions?.fetcher) {
                             data = await fetchOptions.fetcher(params);
                         } else {
-                            const { response: res, responseValue } = await lessFetch(desc, params, config.requestInit);
+                            const { response: res, responseValue } = await rhFetch(desc, params, config.requestInit);
                             response = res;
                             if (!response?.ok) return reject(new Error("Response not ok"));
                             data = responseValue;
@@ -296,7 +294,7 @@ async function mountedLessFetch<D extends object, R = LessResponseValue<D>>(
 
         return { data, response };
     } catch (err) {
-        const fetchErr = new LessFetchError(err as Error, response);
+        const fetchErr = new RHFetchError(err as Error, response);
 
         if (key) {
             /** Retry prevented by options? */

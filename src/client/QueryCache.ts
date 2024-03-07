@@ -88,7 +88,7 @@ export default class QueryCache {
         return this.#cache.has(k);
     }
 
-    /** Entfernt einen Eintrag aus dem Cache und benachrichtigt Listeners */
+    /** Remnoves an entry and notifies listeners */
     delete(key: QueryCacheKey | string) {
         const k = this.serializeKey(key);
         this.#cache.delete(k);
@@ -97,12 +97,12 @@ export default class QueryCache {
 
     // * Mutate
 
-    /** Aktualisiert den Status einer Query benachrichtigt Listeners */
+    /** Updates a query state and notfies listeners */
     update(key: QueryCacheKey | string, state: QueryStateUpdate) {
         const k = this.serializeKey(key);
-        /** Aktueller Status */
+        /** Current Status */
         const currentState = this.#cache.get(k);
-        /** Neuer Status */
+        /** New Status */
         const newState: QueryState = {
             // Default Values
             data: undefined,
@@ -111,7 +111,7 @@ export default class QueryCache {
             tags: new Set<string>(),
             timestamp: undefined,
             response: null,
-            // Aktueller Status (falls vorhanden)
+            // Current Status
             ...currentState,
         };
 

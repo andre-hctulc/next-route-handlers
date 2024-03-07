@@ -1,8 +1,8 @@
 const devMode = process.env.NODE_ENV === "development";
 
-export class LessError extends Error {
-    static is(err: unknown, status?: number): err is LessError {
-        return err instanceof LessError && (!status || err.status === status);
+export default class RHError extends Error {
+    static is(err: unknown, status?: number): err is RHError {
+        return err instanceof RHError && (!status || err.status === status);
     }
 
     readonly isLessError = true;

@@ -1,8 +1,9 @@
-import type { Desc, LessApiHandler } from "./types";
-import { DynamicRequest, parseParams } from "./system";
+import type { Params, RHDesc, ResponseValue } from "./types";
+import { parseParams } from "./system";
 import type { NextRequest } from "next/server";
-import LessResponse from "./LessResponse";
-import { LessError } from "./error";
+import RHResponse from "./RHResponse";
+import RHError from "./RHError";
+import { headers } from "next/headers";
 
 /**
  * Do this only in dev mode!!
@@ -26,32 +27,40 @@ function errorMessageToDevStatusText(errorMessage: string) {
 
 const devMode = process.env.NODE_ENV === "development";
 
-export default async function withLess<T extends object = object>(
-    args: [NextRequest, Record<string, string> | null | undefined] | [NextRequest, Record<string, string> | null | undefined, DynamicRequest], // [NextRequest, pathSegements, STaticRequest]
-    desc: Desc<T> | null,
+type LessApiHandlerResponse<T extends object> = Response | ResponseValue<T>;
+
+export type LessApiHandler<T extends object> = (req: {
+    params: Params<T>;
+    pathSegments: Record<string, string | string[]>;
+    req: NextRequest;
+}) => LessApiHandlerResponse<T> | Promise<LessApiHandlerResponse<T>>;
+
+export default async function rh<T extends object = object>(
+    args: [NextRequest, Record<string, string> | null | undefined],
+    desc: RHDesc<T> | null,
     handler: LessApiHandler<T>
 ): Promise<Response> {
     const req = args[0];
     const pathSegments = args[1] || {};
-    const staticRequest = args[2];
+    const headersList = headers();
 
     try {
-        const parsedParams = await parseParams<T>(req, desc || ({ $response: "any" } as Desc<T>), staticRequest);
+        const parsedParams = await parseParams<T>(req, desc || ({ $response: "any" } as RHDesc<T>), headersList);
         const result = await handler({ params: parsedParams, pathSegments, req: req });
 
         // response
         if (result instanceof Response) return result;
         // response value
-        else return LessResponse.send(result);
+        else return RHResponse.send(result);
     } catch (err) {
         console.error(`\n${desc?.$method.toUpperCase()} - ${desc?.$path}\n`, err);
 
-        if (err instanceof LessError) {
+        if (err instanceof RHError) {
             // valid Error.message as statusMessage expected expected
-            return LessResponse.sendStatus(err.status, err.statusText, { body: JSON.stringify(err.body || "") });
+            return RHResponse.sendStatus(err.status, err.statusText, { body: JSON.stringify(err.body || "") });
         } else {
             // Error.message -> Response.statusText
-            return LessResponse.sendStatus(500, devMode ? errorMessageToDevStatusText((err as Error).message) : "Internal Server Error", {
+            return RHResponse.sendStatus(500, devMode ? errorMessageToDevStatusText((err as Error).message) : "Internal Server Error", {
                 body: devMode ? (err as Error).stack : undefined,
             });
         }

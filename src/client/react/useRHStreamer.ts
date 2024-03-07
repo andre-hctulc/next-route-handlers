@@ -1,16 +1,16 @@
-import LessFetchError from "./LessFetchError";
+import RHFetchError from "./RHFetchError";
 import React from "react";
-import useLessQuery, { RefetchResult, UseFetchOptions } from "./useLessQuery";
-import { useLess } from "./LessProvider";
-import type { LessResponseValue, Desc, Params } from "../../types";
+import useRHQuery, { RefetchResult, QueryOptions } from "./useRHQuery";
+import { useRHContext } from "./RHProvider";
+import type { ResponseValue, RHDesc, Params } from "../../types";
 import QueryCache, { QueryCacheStateListener } from "../QueryCache";
 import type { Falsy } from "../client-util";
-import { getQueryKey, streamerTag, useMutateQuery } from "./cache";
+import useRHCache, { getQueryKey, streamerTag } from "./useRHCache";
 import { randomId } from "../../system";
 
-export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseValue<D>> = {
+export type Streamer<D extends { $response: any[] } = any, R = ResponseValue<D>> = {
     isError: boolean;
-    error: LessFetchError | null;
+    error: RHFetchError | null;
     isLoading: boolean;
     /** Merged pages data */
     pages: R | undefined;
@@ -19,7 +19,7 @@ export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseV
     /** Current size */
     size: number;
     /** Sets the size */
-    setSize: (newSize: number) => void | Promise<LessResponseValue<D>[] | undefined>;
+    setSize: (newSize: number) => void | Promise<ResponseValue<D>[] | undefined>;
     /** Increases size by 1 */
     next: () => void;
     isReady: boolean;
@@ -32,7 +32,7 @@ export type LessStreamer<D extends { $response: any[] } = any, R = LessResponseV
     revalidate: () => void;
 };
 
-export type StreamerOptions<D extends object, R = LessResponseValue<D>[]> = UseFetchOptions<D, R> & {
+export type StreamerOptions<D extends object, R = ResponseValue<D>[]> = QueryOptions<D, R> & {
     chunkSize: number;
     /** @default 1 */
     defaultSize?: number;
@@ -41,22 +41,21 @@ export type StreamerOptions<D extends object, R = LessResponseValue<D>[]> = UseF
     resetSizeOnRevalidate?: boolean;
 };
 
-export default function useLessStreamer<D extends { offset?: number; limit?: number; $response: any[] }, R extends any[] = LessResponseValue<D>>(
-    desc: Desc<D>,
+export default function useRHStreamer<D extends { offset?: number; limit?: number; $response: any[] }, R extends any[] = ResponseValue<D>>(
+    desc: RHDesc<D>,
     params: Params<D> | Falsy,
     options: StreamerOptions<D, R>
-): LessStreamer<D, R> {
+): Streamer<D, R> {
     const enabled = options.enabled !== false;
-    const { queryCache: cache, userRequired, currentUser, queryConfig: globalConfig } = useLess<any>();
-    const cognito = userRequired ? currentUser?.id || "" : undefined;
+    const { queryCache: cache, queryConfig: globalConfig } = useRHContext();
     const chunkSizeRef = React.useRef(options.chunkSize);
     const chunkSize = chunkSizeRef.current;
     const [size, setSize] = React.useState(options.defaultSize ?? 1);
-    const baseKey = enabled && params && getQueryKey(desc, { ...params, offset: undefined, limit: undefined }, cognito, { streamer: true });
+    const baseKey = enabled && params && getQueryKey(desc, { ...params, offset: undefined, limit: undefined }, { streamer: true });
     /** Used as dependency in effects */
     const serBaseKey = baseKey && QueryCache.serializeKey(baseKey);
     /** options contains here the query config used in page fetches  */
-    const query = useLessQuery(desc, null, options);
+    const query = useRHQuery(desc, null, options);
     const [queries, setQueries] = React.useState<RefetchResult<R>[] | undefined>(undefined);
     const [pages, page, isError, isSuccess] = React.useMemo<[R | undefined, R | undefined, boolean, boolean]>(() => {
         if (!queries) return [undefined, undefined, false, false];
@@ -76,7 +75,7 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     const errQuery = React.useMemo(() => queries?.find(q => q.error), [queries]);
     const [isLoading, setIsLoading] = React.useState(false);
     const id = React.useMemo(() => "streamer_id:" + randomId(), []);
-    const reval = useMutateQuery();
+    const { revalidateStreamer } = useRHCache();
 
     // Revalidate Effect
     React.useEffect(() => {
@@ -150,7 +149,7 @@ export default function useLessStreamer<D extends { offset?: number; limit?: num
     }
 
     function revalidate() {
-        if (params) reval(desc, params, { streamer: true });
+        if (params) revalidateStreamer(desc, params);
     }
 
     function _setSize(size: number) {

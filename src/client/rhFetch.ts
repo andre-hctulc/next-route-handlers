@@ -1,12 +1,12 @@
-import { Desc, Params, LessResponseValue } from "../types";
+import { RHDesc, Params, ResponseValue } from "../types";
 import { requiresFormDataBody } from "../system";
 import { bodyToFormData, getResponseValue, setParams } from "./client-util";
 
-export default async function lessFetch<T extends object>(
-    desc: Desc<T>,
+export default async function rhFetch<T extends object>(
+    desc: RHDesc<T>,
     params: Params<T> | FormData,
     requestInit?: RequestInit
-): Promise<{ response: Response; responseValue: LessResponseValue<T> }> {
+): Promise<{ response: Response; responseValue: ResponseValue<T> }> {
     let inp = desc.$path;
     const method = (desc.$method || requestInit?.method || "GET").toLowerCase();
     const headers = new Headers(requestInit?.headers || {});
@@ -15,7 +15,7 @@ export default async function lessFetch<T extends object>(
     const searchParams = new URLSearchParams();
 
     if (params instanceof FormData) {
-        const newParams: any = {} ;
+        const newParams: any = {};
         params.forEach((value, key) => ((newParams as Record<string, any>)[key] = value));
         params = newParams;
     }

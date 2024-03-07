@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import { useLess } from "./LessProvider";
+import { useRHContext } from "./RHProvider";
 import { QueryState } from "../QueryCache";
 
-export default function LessDev() {
-    const ctx = useLess();
-    const { queryCache: cache } = useLess();
+export default function RHDev() {
+    const ctx = useRHContext();
+    const { queryCache: cache } = useRHContext();
     const [open, setOpen] = React.useState(false);
     const cacheEntries = React.useMemo<{ key: string; state: QueryState }[]>(() => {
         if (!open || !ctx.debug) return [];

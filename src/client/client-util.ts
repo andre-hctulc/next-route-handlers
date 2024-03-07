@@ -1,9 +1,11 @@
 import { dateReviver } from "../system";
-import type { Desc, ParamIn, ParamType, LessResponseType } from "../types";
-import type { LessQueryConfig } from "./react/useLessQuery";
+import type { RHDesc, ParamIn, ParamType, ResponseType } from "../types";
+import type { RHQueryConfig } from "./react/useRHQuery";
 
-export function requiresFormDataBody(desc: Desc<any>): boolean {
-    return Object.values(desc).some(v => typeof v === "object" && ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body");
+export function requiresFormDataBody(desc: RHDesc<any>): boolean {
+    return Object.values(desc).some(
+        v => typeof v === "object" && ((v as any)?.type === "blob" || (v as any)?.type === "blob-array") && (v as any)?.in === "body"
+    );
 }
 
 function setBodyProp(paramName: string, body: any, value: any) {
@@ -34,7 +36,7 @@ function setHeadersOrQueryParams(paramName: string, headersOrSearchParams: Heade
     }
 }
 
-export function setParams(desc: Desc<any>, headers: Headers, body: any, query: URLSearchParams, values: any) {
+export function setParams(desc: RHDesc<any>, headers: Headers, body: any, query: URLSearchParams, values: any) {
     for (const paramName in desc) {
         if (paramName.startsWith("$")) continue;
 
@@ -64,7 +66,9 @@ function paramToFormDataValue(value: any, paramDef: { type: ParamType; in: Param
         case "string":
             return value + "";
         case "blob-array":
-            return (value as (Blob | ArrayBuffer)[]).map(item => (item instanceof ArrayBuffer || item instanceof Uint8Array ? new Blob([item]) : item));
+            return (value as (Blob | ArrayBuffer)[]).map(item =>
+                item instanceof ArrayBuffer || item instanceof Uint8Array ? new Blob([item]) : item
+            );
         case "blob":
             return value instanceof ArrayBuffer || value instanceof Uint8Array ? new Blob([value]) : value;
         case "object":
@@ -75,7 +79,7 @@ function paramToFormDataValue(value: any, paramDef: { type: ParamType; in: Param
     }
 }
 
-export function bodyToFormData(body: object, desc: Desc<any>) {
+export function bodyToFormData(body: object, desc: RHDesc<any>) {
     const formData = new FormData();
 
     for (const propName in body) {
@@ -98,7 +102,7 @@ export function bodyToFormData(body: object, desc: Desc<any>) {
     return formData;
 }
 
-export async function getResponseValue(res: Response, type: LessResponseType) {
+export async function getResponseValue(res: Response, type: ResponseType) {
     if (!res.ok) return undefined;
 
     switch (type) {
@@ -169,13 +173,13 @@ export function toBlobArray<R extends boolean = false>(
  * @param config2
  * @returns
  */
-export function mergeConfigs(config1: Partial<LessQueryConfig>, config2: LessQueryConfig) {
+export function mergeConfigs(config1: Partial<RHQueryConfig>, config2: RHQueryConfig) {
     /** Enthält alle props (Standardmäßig mit default values) */
     const newConfig = { ...config2 };
 
     // `newConfig` enthält ALLE möglichen Optionen, dewegen darüber iterieren, um nur erlaubte Props zu setzen
     for (const mem in newConfig) {
-        const prop: keyof LessQueryConfig = mem as any;
+        const prop: keyof RHQueryConfig = mem as any;
         if (config1[prop] !== undefined) (newConfig as any)[prop] = config1[prop];
     }
 
