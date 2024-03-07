@@ -23,8 +23,7 @@ export type QueryCacheStateListener = (state: QueryState | null, queueIndex: num
 /**
  * If **not** _undefined_ is returned, the return value is used as the new data
  * */
-export type QueryCacheMutate = ((state: QueryState) => any) | { key: QueryCacheKey; data: any };
-export type QueryCacheDelete = (state: QueryState) => boolean | QueryCacheKey;
+export type QueryCacheMutate = (state: QueryState) => boolean | { newData: any };
 type QueryStateUpdate = Partial<Omit<QueryState, "timestamp" | "key" | "tags" | "data">> & {
     tags?: string[] | undefined | Set<string>;
     data?: { d: any } | null;
@@ -145,28 +144,12 @@ export default class QueryCache {
 
     /** Mutates entries and notifies listeners */
     mutate(mutator: QueryCacheMutate) {
-        if (typeof mutator === "function") {
-            for (const k of this.#cache.keys()) {
-                const state = this.#cache.get(k)!;
-                const newData = mutator(state);
-                if (newData !== undefined) this.update(k, { data: newData });
-            }
-        } else {
-            this.update(mutator.key, { data: mutator.data });
+        for (const k of this.#cache.keys()) {
+            const state = this.#cache.get(k)!;
+            const mutated = mutator(state);
+            if (mutated === false) continue;
+            if (mutated === true) this.delete(k);
+            else this.update(k, { data: mutated.newData });
         }
-    }
-
-    /** Removes entries and notifies listeners */
-    remove(del: QueryCacheDelete) {
-        if (typeof del === "function") {
-            // Get keys now as the entries could change during the loop
-            const keys = Array.from(this.#cache.keys());
-
-            for (const k of keys) {
-                const state = this.#cache.get(k)!;
-                const reval = del(state);
-                if (reval) this.delete(k);
-            }
-        } else this.delete(del);
     }
 }

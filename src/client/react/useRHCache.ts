@@ -122,7 +122,7 @@ export default function useRHCache(): Cache {
     }
 
     function revalidateTags(tagsFilter: QueryTagFilter) {
-        cache.remove(state => stateIncludesTags(state, tagsFilter));
+        cache.mutate(state => stateIncludesTags(state, tagsFilter));
     }
 
     return { mutateQuery, revalidateStreamer, revalidateTags, mutateQueries };

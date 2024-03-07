@@ -185,7 +185,7 @@ const { page: articles, pages: allArticles, setSize, error, size, revalidate } =
 
 ## Server API
 
-### Desc
+### RHDesc
 
 | property  | type                                                                                        |
 | --------- | ------------------------------------------------------------------------------------------- |
@@ -223,11 +223,12 @@ These options can be used in `useRHQuery` and `useRHStreamer`
 | forceRefetch     | `boolean`                        | `false`       | Ignore fresh data and force fetch           |
 | detatch          | `boolean`                        | `false`       | Disable cache use                           |
 
-### Revalidations
+### Revalidations/Cache mutations
 
 ```tsx
 const { mutateQuery, revalidateStreamer, revalidateTags, mutateQueries } = useRHCache();
 mutateQuery(GETArticleDesc, { articleId: "abc" });
 revalidateStreamer(GETArticlesDesc, {});
 revalidateTags(["my-articles"]);
+mutateQueries(queryState => shouldRevalidate(queryState));
 ```
