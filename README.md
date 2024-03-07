@@ -227,8 +227,12 @@ These options can be used in `useRHQuery` and `useRHStreamer`
 
 ```tsx
 const { mutateQuery, revalidateStreamer, revalidateTags, mutateQueries } = useRHCache();
-mutateQuery(GETArticleDesc, { articleId: "abc" });
+// revalidate/mutate single query
+mutateQuery(GETArticleDesc, { articleId: "abc" }, options);
+// revalidate a streamer
 revalidateStreamer(GETArticlesDesc, {});
+// revalidate queries by tags
 revalidateTags(["my-articles"]);
+// revalidate/mutate multiple queries
 mutateQueries(queryState => shouldRevalidate(queryState));
 ```
